@@ -1,0 +1,6 @@
+typer
+rich
+pydantic
+dnspython
+pytest
+ruff
