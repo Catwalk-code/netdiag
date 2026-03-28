@@ -1,0 +1,16 @@
+BoxLayout:
+    orientation: "vertical"
+    padding: 10
+    spacing: 10
+
+    Button:
+        text: "Запустить диагностику"
+        size_hint_y: None
+        height: "48dp"
+        on_release: app.run_diagnostics()
+
+    ScrollView:
+        TextInput:
+            id: output_box
+            text: "Нажмите кнопку для запуска..."
+            readonly: True
