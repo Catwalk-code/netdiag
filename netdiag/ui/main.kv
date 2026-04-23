@@ -9,8 +9,11 @@ BoxLayout:
         height: "48dp"
         on_release: app.run_diagnostics()
 
-    ScrollView:
-        TextInput:
-            id: output_box
-            text: "Нажмите кнопку для запуска..."
-            readonly: True
+    TextInput:
+        id: output_box
+        text: "Нажмите кнопку для запуска..."
+        readonly: True
+        multiline: True
+        cursor_blink: False
+        do_wrap: False
+        scroll_from_swipe: True
