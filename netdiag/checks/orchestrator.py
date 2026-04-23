@@ -19,14 +19,13 @@ def run_all_checks(config_path: str = "targets.json"):
                 count=config.defaults.ping_count,
                 timeout_ms=config.defaults.ping_timeout_ms,
             )
-            lines.append(f"ping: {ping_result}")
 
             if ping_result.get("ok"):
-                    avg_ms = ping_result.get("avg_ms")
-                    if avg_ms is not None:
-                        lines.append(f"ping: OK, avg={avg_ms} ms")
-                    else:
-                        lines.append("ping: OK, avg=н/д")
+                avg_ms = ping_result.get("avg_ms")
+                if avg_ms is not None:
+                    lines.append(f"ping: OK, avg={avg_ms} ms")
+                else:
+                    lines.append("ping: OK, avg=н/д")
             else:
                 lines.append("ping: FAIL")
 

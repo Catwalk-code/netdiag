@@ -9,11 +9,17 @@ BoxLayout:
         height: "48dp"
         on_release: app.run_diagnostics()
 
-    TextInput:
-        id: output_box
-        text: "Нажмите кнопку для запуска..."
-        readonly: True
-        multiline: True
-        cursor_blink: False
-        do_wrap: False
-        scroll_from_swipe: True
+    ScrollView:
+        do_scroll_x: True
+        do_scroll_y: True
+        bar_width: "10dp"
+
+        Label:
+            id: output_box
+            text: "Нажмите кнопку для запуска..."
+            text_size: self.width, None
+            size_hint_y: None
+            height: self.texture_size[1]
+            valign: "top"
+            halign: "left"
+            padding: "6dp", "6dp"
