@@ -4,10 +4,16 @@ import platform
 import subprocess
 
 
+def _is_hop_line(line: str) -> bool:
+    """Проверяет, содержит ли строка информацию о переходе маршрута."""
+    normalized = f" {line} "
+    return " ms " in normalized or " <1 ms" in line or "Request timed out." in line
+
+
 def _compact_tracert_output(raw_output: str, max_lines: int = 8) -> str:
     """Формирует компактный текст по ключевым строкам tracert."""
     lines = [line.strip() for line in raw_output.splitlines() if line.strip()]
-    hop_lines = [line for line in lines if " ms " in f" {line} " or " <1 ms" in line or "Request timed out." in line]
+    hop_lines = [line for line in lines if _is_hop_line(line)]
     if not hop_lines:
         return "Нет данных по переходам маршрута."
     return "\n".join(hop_lines[:max_lines])

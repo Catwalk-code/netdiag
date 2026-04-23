@@ -16,4 +16,5 @@ def run_tcp_check(host: str, ports: list[int], timeout_ms: int = 800) -> dict:
         except OSError:
             closed.append(port)
 
-    return {"ok": len(closed) == 0, "open": opened, "closed": closed}
+    # Считаем TCP-проверку успешной, если доступен хотя бы один из указанных портов.
+    return {"ok": len(opened) > 0, "open": opened, "closed": closed}

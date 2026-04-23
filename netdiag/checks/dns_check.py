@@ -4,9 +4,12 @@ import socket
 
 
 def run_dns_check(host: str, dns_servers: list[str] | None = None) -> dict:
-    """Пытается определить IPv4-адрес по имени хоста."""
+    """Пытается определить IPv4-адрес по имени хоста.
+
+    Параметр dns_servers пока не используется и сохранён для совместимости
+    с текущей структурой и возможным расширением в будущем.
+    """
     # dns_servers оставлен в сигнатуре для совместимости с текущей структурой проекта.
-    _ = dns_servers
     try:
         ip_address = socket.gethostbyname(host)
         return {"ok": True, "ip": ip_address, "error": None}

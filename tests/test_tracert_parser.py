@@ -15,4 +15,4 @@ Trace complete.
 
 
 def test_compact_tracert_output_empty():
-    assert "Нет данных" in _compact_tracert_output("No useful lines here")
+    assert _compact_tracert_output("No useful lines here") == "Нет данных по переходам маршрута."

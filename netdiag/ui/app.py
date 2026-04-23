@@ -6,11 +6,14 @@ from pathlib import Path
 class NetDiagApp(App):
     """Главное Kivy-приложение NetDiag."""
 
-    last_report_text: str = ""
+    def __init__(self, **kwargs):
+        """Инициализирует состояние приложения."""
+        super().__init__(**kwargs)
+        self.last_report_text = ""
 
     def build(self):
         """Загружает интерфейс из kv-файла."""
-        kv_path = Path(__file__).with_name("main.kv")
+        kv_path = Path(__file__).parent / "main.kv"
         return Builder.load_file(str(kv_path))
 
     def run_diagnostics(self):
