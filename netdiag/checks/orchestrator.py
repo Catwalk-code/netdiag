@@ -4,7 +4,7 @@ from netdiag.checks.dns_check import run_dns_check
 from netdiag.checks.tcp_ports import run_tcp_check
 
 
-def _format_ping_line(result: dict) -> str:
+def _format_ping_line(result):
     """Формирует строку результата ping."""
     if result.get("ok"):
         avg_ms = result.get("avg_ms")
@@ -13,14 +13,14 @@ def _format_ping_line(result: dict) -> str:
     return "ping: FAIL"
 
 
-def _format_dns_line(result: dict) -> str:
+def _format_dns_line(result):
     """Формирует строку результата DNS-проверки."""
     if result.get("ok"):
         return f"dns: OK (IP: {result.get('ip')})"
     return f"dns: FAIL ({result.get('error', 'неизвестная ошибка')})"
 
 
-def _format_tcp_line(result: dict) -> str:
+def _format_tcp_line(result):
     """Формирует строку результата TCP-проверки."""
     open_ports = result.get("open", [])
     closed_ports = result.get("closed", [])
@@ -28,7 +28,7 @@ def _format_tcp_line(result: dict) -> str:
     return f"tcp: {status} (open: {open_ports}, closed: {closed_ports})"
 
 
-def run_all_checks(config_path: str = "targets.json"):
+def run_all_checks(config_path="targets.json"):
     """Запускает все проверки и возвращает человекочитаемый итоговый отчёт."""
     config = load_config(config_path)
     lines = []

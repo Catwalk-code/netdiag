@@ -3,7 +3,7 @@
 from pydantic import BaseModel, Field, field_validator
 
 
-def _validate_port_list(ports: list[int]) -> list[int]:
+def _validate_port_list(ports):
     """Проверяет, что список портов содержит значения от 1 до 65535."""
     for port in ports:
         if not (1 <= port <= 65535):
@@ -22,7 +22,7 @@ class Defaults(BaseModel):
 
     @field_validator("ping_count")
     @classmethod
-    def validate_ping_count(cls, value: int) -> int:
+    def validate_ping_count(cls, value):
         """Проверяет, что число ping-запросов больше нуля."""
         if value <= 0:
             raise ValueError("Количество ping-запросов должно быть больше 0.")
@@ -30,7 +30,7 @@ class Defaults(BaseModel):
 
     @field_validator("ping_timeout_ms", "tcp_timeout_ms")
     @classmethod
-    def validate_timeouts(cls, value: int) -> int:
+    def validate_timeouts(cls, value):
         """Проверяет, что таймауты больше нуля."""
         if value <= 0:
             raise ValueError("Таймаут должен быть больше 0.")
@@ -38,7 +38,7 @@ class Defaults(BaseModel):
 
     @field_validator("ports")
     @classmethod
-    def validate_ports(cls, value: list[int]) -> list[int]:
+    def validate_ports(cls, value):
         """Проверяет корректность списка портов по умолчанию."""
         return _validate_port_list(value)
 
@@ -53,7 +53,7 @@ class Target(BaseModel):
 
     @field_validator("name", "host")
     @classmethod
-    def validate_required_text(cls, value: str) -> str:
+    def validate_required_text(cls, value):
         """Проверяет, что строковые поля цели не пустые."""
         cleaned = value.strip()
         if not cleaned:
@@ -62,7 +62,7 @@ class Target(BaseModel):
 
     @field_validator("ports")
     @classmethod
-    def validate_target_ports(cls, value: list[int] | None) -> list[int] | None:
+    def validate_target_ports(cls, value):
         """Проверяет корректность пользовательского списка портов цели."""
         if value is None:
             return None
@@ -77,7 +77,7 @@ class AppConfig(BaseModel):
 
     @field_validator("targets")
     @classmethod
-    def validate_targets(cls, value: list[Target]) -> list[Target]:
+    def validate_targets(cls, value):
         """Проверяет, что в конфиге есть хотя бы одна цель."""
         if not value:
             raise ValueError("Список целей не может быть пустым.")

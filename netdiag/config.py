@@ -8,7 +8,7 @@ from pydantic import ValidationError
 from netdiag.models import AppConfig
 
 
-def _format_validation_error(exc: ValidationError) -> str:
+def _format_validation_error(exc):
     """Преобразует ошибки Pydantic в понятный для пользователя текст."""
     lines: list[str] = []
     for err in exc.errors():
@@ -18,7 +18,7 @@ def _format_validation_error(exc: ValidationError) -> str:
     return "\n".join(lines)
 
 
-def load_config(path: str = "targets.json") -> AppConfig:
+def load_config(path="targets.json"):
     """Надёжно загружает targets.json и возвращает валидированный AppConfig."""
     config_path = Path(path)
 

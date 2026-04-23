@@ -3,7 +3,7 @@
 import socket
 
 
-def run_dns_check(host: str, dns_servers: list[str] | None = None) -> dict:
+def run_dns_check(host, dns_servers=None):
     """Пытается определить IPv4-адрес по имени хоста.
 
     Параметр dns_servers пока не используется и сохранён для совместимости
