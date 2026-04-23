@@ -1,19 +1,19 @@
+"""Проверка доступности TCP-портов."""
+
 import socket
 
-def run_tcp_check(host, ports, timeout_ms=800):
-    timeout_sec = timeout_ms / 1000
-    opened = []
-    closed = []
+
+def run_tcp_check(host: str, ports: list[int], timeout_ms: int = 800) -> dict:
+    """Проверяет список TCP-портов и возвращает открытые и закрытые."""
+    timeout_sec = timeout_ms / 1000.0
+    opened: list[int] = []
+    closed: list[int] = []
 
     for port in ports:
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.settimeout(timeout_sec)
         try:
-            s.connect((host, port))
-            opened.append(port)
-        except Exception:
+            with socket.create_connection((host, port), timeout=timeout_sec):
+                opened.append(port)
+        except OSError:
             closed.append(port)
-        finally:
-            s.close()
-        
-        return f"OK (open: {opened}, closed: {closed})"
+
+    return {"ok": len(closed) == 0, "open": opened, "closed": closed}

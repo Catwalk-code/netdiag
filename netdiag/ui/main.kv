@@ -1,25 +1,35 @@
+#:import dp kivy.metrics.dp
+
 BoxLayout:
     orientation: "vertical"
     padding: 10
     spacing: 10
 
-    Button:
-        text: "Запустить диагностику"
+    BoxLayout:
         size_hint_y: None
         height: "48dp"
-        on_release: app.run_diagnostics()
+        spacing: 10
+
+        Button:
+            text: "Запустить диагностику"
+            on_release: app.run_diagnostics()
+
+        Button:
+            text: "Сохранить отчёт"
+            on_release: app.save_report()
 
     ScrollView:
-        do_scroll_x: True
+        do_scroll_x: False
         do_scroll_y: True
         bar_width: "10dp"
+        scroll_wheel_distance: dp(60)
 
         Label:
             id: output_box
             text: "Нажмите кнопку для запуска..."
             text_size: self.width, None
             size_hint_y: None
-            height: self.texture_size[1]
+            height: max(self.texture_size[1], self.parent.height)
             valign: "top"
             halign: "left"
             padding: "6dp", "6dp"

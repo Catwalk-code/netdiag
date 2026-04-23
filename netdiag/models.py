@@ -1,64 +1,84 @@
-from pydantic import BaseModel, Field, field_validator 
-class Defaults(BaseModel):
-    ping_count: int = Field(default=4, description="Количество пингов для каждого теста")
-    ping_timeout_ms: int = Field(default=1000, description="Макс. время ответа на пинг в миллисекундах")
-    tcp_timeout_ms: int = Field(default=800, description="Макс. время ответа на TCP-запрос в миллисекундах")
-    ports: list[int] = Field(default_factory=lambda: [80, 443], description="Список портов для проверки TCP-соединения")
-    dns_servers: list[str] = Field(default_factory=lambda: ["1.1.1.1", "8.8.8.8"], 
-                                   description="Список DNS-серверов для проверки")
+"""Pydantic-модели конфигурации NetDiag."""
 
-    @field_validator('ping_count')
+from pydantic import BaseModel, Field, field_validator
+
+
+def _validate_port_list(ports: list[int]) -> list[int]:
+    """Проверяет, что список портов содержит значения от 1 до 65535."""
+    for port in ports:
+        if not (1 <= port <= 65535):
+            raise ValueError(f"Некорректный порт: {port}. Допустим диапазон 1..65535.")
+    return ports
+
+
+class Defaults(BaseModel):
+    """Глобальные настройки диагностики по умолчанию."""
+
+    ping_count: int = Field(default=4, description="Количество ping-запросов")
+    ping_timeout_ms: int = Field(default=1000, description="Таймаут ping в миллисекундах")
+    tcp_timeout_ms: int = Field(default=800, description="Таймаут TCP-подключения в миллисекундах")
+    ports: list[int] = Field(default_factory=lambda: [80, 443], description="Порты для TCP-проверки")
+    dns_servers: list[str] = Field(default_factory=lambda: ["1.1.1.1", "8.8.8.8"], description="DNS-серверы")
+
+    @field_validator("ping_count")
     @classmethod
-    def validate_ping_count(cls, value):
-        if value < 1:
-            raise ValueError('Количество пингов должно быть больше 0')
-        return value
-    
-    @field_validator('ping_timeout_ms', 'tcp_timeout_ms')
-    @classmethod
-    def validate_timeouts(cls, value):
+    def validate_ping_count(cls, value: int) -> int:
+        """Проверяет, что число ping-запросов больше нуля."""
         if value <= 0:
-            raise ValueError('Таймаут должен быть больше 0 мс')
+            raise ValueError("Количество ping-запросов должно быть больше 0.")
         return value
-    
+
+    @field_validator("ping_timeout_ms", "tcp_timeout_ms")
+    @classmethod
+    def validate_timeouts(cls, value: int) -> int:
+        """Проверяет, что таймауты больше нуля."""
+        if value <= 0:
+            raise ValueError("Таймаут должен быть больше 0.")
+        return value
 
     @field_validator("ports")
     @classmethod
     def validate_ports(cls, value: list[int]) -> list[int]:
-        for port in value:
-            if not (1 <= port <= 65535):
-                raise ValueError(f"Некорректный порт: {port}")
-        return value
+        """Проверяет корректность списка портов по умолчанию."""
+        return _validate_port_list(value)
+
 
 class Target(BaseModel):
+    """Описание одной диагностируемой цели."""
+
     name: str
     host: str
-    ports: list[int] | None = None # Если у цели нет своих портов, возьмём порты из общих настроек в Defaults
+    # Если список портов не задан, будут взяты defaults.ports.
+    ports: list[int] | None = None
 
-    @field_validator('name', 'host')
+    @field_validator("name", "host")
     @classmethod
-    def validate_target_fields(cls, value):
-        if not value:
-            raise ValueError('Поле не может быть пустым')
-        return value
-    
+    def validate_required_text(cls, value: str) -> str:
+        """Проверяет, что строковые поля цели не пустые."""
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Поле не может быть пустым.")
+        return cleaned
+
     @field_validator("ports")
     @classmethod
     def validate_target_ports(cls, value: list[int] | None) -> list[int] | None:
+        """Проверяет корректность пользовательского списка портов цели."""
         if value is None:
-            return value
-        for port in value:
-            if not (1 <= port <= 65535):
-                raise ValueError(f"Некорректный порт: {port}")
-        return value
+            return None
+        return _validate_port_list(value)
+
 
 class AppConfig(BaseModel):
+    """Корневая модель файла targets.json."""
+
     defaults: Defaults
     targets: list[Target]
 
-    @field_validator('targets')
+    @field_validator("targets")
     @classmethod
-    def validate_targets(cls, value):
+    def validate_targets(cls, value: list[Target]) -> list[Target]:
+        """Проверяет, что в конфиге есть хотя бы одна цель."""
         if not value:
-            raise ValueError('Список целей не может быть пустым')
+            raise ValueError("Список целей не может быть пустым.")
         return value
