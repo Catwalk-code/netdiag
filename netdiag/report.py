@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 
 
-def save_report(report_text: str, reports_dir: str = "reports") -> str:
+def save_report(report_text, reports_dir="reports"):
     """Сохраняет отчёт в папку reports и возвращает абсолютный путь к .txt файлу."""
     target_dir = Path(reports_dir)
     target_dir.mkdir(parents=True, exist_ok=True)

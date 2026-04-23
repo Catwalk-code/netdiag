@@ -3,7 +3,7 @@
 import socket
 
 
-def run_tcp_check(host: str, ports: list[int], timeout_ms: int = 800) -> dict:
+def run_tcp_check(host, ports, timeout_ms=800):
     """Проверяет список TCP-портов и возвращает открытые и закрытые."""
     timeout_sec = timeout_ms / 1000.0
     opened: list[int] = []

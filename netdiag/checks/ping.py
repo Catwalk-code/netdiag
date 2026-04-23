@@ -5,7 +5,7 @@ import re
 import subprocess
 
 
-def _parse_avg_ms(output: str) -> int | None:
+def _parse_avg_ms(output):
     """Извлекает среднее время из вывода ping в RU/EN локали."""
     patterns = (
         r"Average\s*=\s*(\d+)\s*ms",  # EN
@@ -18,7 +18,7 @@ def _parse_avg_ms(output: str) -> int | None:
     return None
 
 
-def run_ping_check(host: str, count: int = 4, timeout_ms: int = 1000) -> dict:
+def run_ping_check(host, count=4, timeout_ms=1000):
     """Запускает Windows ping и возвращает результат в структурированном виде."""
     if platform.system() != "Windows":
         return {"ok": False, "avg_ms": None, "raw": "Диагностика ping поддерживается только в Windows."}

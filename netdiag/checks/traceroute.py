@@ -4,13 +4,13 @@ import platform
 import subprocess
 
 
-def _is_hop_line(line: str) -> bool:
+def _is_hop_line(line):
     """Проверяет, содержит ли строка информацию о переходе маршрута."""
     normalized = f" {line} "
     return " ms " in normalized or " <1 ms" in line or "Request timed out." in line
 
 
-def _compact_tracert_output(raw_output: str, max_lines: int = 8) -> str:
+def _compact_tracert_output(raw_output, max_lines=8):
     """Формирует компактный текст по ключевым строкам tracert."""
     lines = [line.strip() for line in raw_output.splitlines() if line.strip()]
     hop_lines = [line for line in lines if _is_hop_line(line)]
@@ -19,7 +19,7 @@ def _compact_tracert_output(raw_output: str, max_lines: int = 8) -> str:
     return "\n".join(hop_lines[:max_lines])
 
 
-def run_traceroute(host: str, max_hops: int = 15, timeout_ms: int = 1000) -> dict:
+def run_traceroute(host, max_hops=15, timeout_ms=1000):
     """Запускает tracert и возвращает краткий и полный вывод."""
     if platform.system() != "Windows":
         return {"ok": False, "summary": "Traceroute поддерживается только в Windows.", "raw": ""}
