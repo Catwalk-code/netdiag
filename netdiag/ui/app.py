@@ -10,6 +10,7 @@ EMPTY_GRAPH_Y_RANGE = (0, 100)
 SINGLE_POINT_X_MARGIN = 0.5
 MIN_GRAPH_Y_MAX = 100
 GRAPH_Y_PADDING = 10
+GRAPH_LINE_COLOR = [0.3, 0.8, 1, 1]
 
 
 class NetDiagApp(App):
@@ -76,7 +77,7 @@ class NetDiagApp(App):
         graph.ymin = 0
         graph.ymax = max(MIN_GRAPH_Y_MAX, max(values) + GRAPH_Y_PADDING)
 
-        plot = MeshLinePlot(color=[0.3, 0.8, 1, 1])
+        plot = MeshLinePlot(color=GRAPH_LINE_COLOR)
         plot.points = [(index, value) for index, value in enumerate(values)]
         graph.add_plot(plot)
 
