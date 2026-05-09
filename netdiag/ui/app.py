@@ -99,7 +99,7 @@ class NetDiagApp(App):
         graph.ymin = 0
         series = [
             SeriesSpec(
-                "ping_avg_ms", GRAPH_PING_COLOR, lambda value: value if value is not None else None
+                "ping_avg_ms", GRAPH_PING_COLOR, lambda value: value
             ),
             SeriesSpec(
                 "dns_ok",
@@ -143,7 +143,10 @@ class NetDiagApp(App):
 
         legend_label = self.root.ids.get("ping_legend") if self.root else None
         if legend_label is not None:
-            legend_lines = ["Пояснение: DNS/TCP — 1 = OK, 0 = FAIL (значение столбца)"]
+            legend_lines = [
+                "Пояснение: DNS/TCP — 1 = "
+                f"{STATUS_LABELS[True]}, 0 = {STATUS_LABELS[False]} (значение столбца)"
+            ]
             for target in targets:
                 ping_text = (
                     f"{target.ping_avg_ms} ms" if target.ping_avg_ms is not None else "н/д"

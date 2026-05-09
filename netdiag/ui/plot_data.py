@@ -49,7 +49,13 @@ def parse_target_checks(report_text):
         status_match = _STATUS_PATTERN.match(line_lower)
         if status_match:
             check_name = status_match.group(1)
-            status_ok = status_match.group(2) == "ok"
+            status_label = status_match.group(2)
+            if status_label == "ok":
+                status_ok = True
+            elif status_label in ("fail", "error"):
+                status_ok = False
+            else:
+                continue
             if check_name == "dns":
                 current_target.dns_ok = status_ok
             else:
