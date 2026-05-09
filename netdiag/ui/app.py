@@ -99,7 +99,7 @@ class NetDiagApp(App):
         graph.ymin = 0
         series = [
             SeriesSpec(
-                "ping_avg_ms", GRAPH_PING_COLOR, lambda value: value
+                "ping_avg_ms", GRAPH_PING_COLOR, lambda value: value if value is not None else None
             ),
             SeriesSpec(
                 "dns_ok",
