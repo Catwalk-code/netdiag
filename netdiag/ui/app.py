@@ -86,16 +86,16 @@ class NetDiagApp(App):
         graph.xmin, graph.xmax = -GROUP_X_MARGIN, point_count - 1 + GROUP_X_MARGIN
         graph.ymin = 0
         series = [
-            ("ping_avg_ms", GRAPH_PING_COLOR, "Ping", lambda value: value),
-            ("dns_ok", GRAPH_DNS_COLOR, "DNS", lambda value: int(value)),
-            ("tcp_ok", GRAPH_TCP_COLOR, "TCP", lambda value: int(value)),
+            ("ping_avg_ms", GRAPH_PING_COLOR, lambda value: value),
+            ("dns_ok", GRAPH_DNS_COLOR, lambda value: 1 if value else 0),
+            ("tcp_ok", GRAPH_TCP_COLOR, lambda value: 1 if value else 0),
         ]
         offsets = [
             (index - (len(series) - 1) / 2) * BAR_SPACING
             for index in range(len(series))
         ]
         all_values: list[int] = []
-        for (attr_name, color, _, transform), offset in zip(series, offsets, strict=True):
+        for (attr_name, color, transform), offset in zip(series, offsets, strict=True):
             plot = BarPlot(color=color, bar_width=BAR_WIDTH)
             points = []
             for index, target in enumerate(targets):
