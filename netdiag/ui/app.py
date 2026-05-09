@@ -1,3 +1,5 @@
+from collections.abc import Callable
+from dataclasses import dataclass
 from kivy.app import App
 from kivy.lang import Builder
 from kivy_garden.graph import BarPlot
@@ -15,6 +17,15 @@ BAR_SPACING = 0.25
 GRAPH_PING_COLOR = [0.3, 0.8, 1, 1]
 GRAPH_DNS_COLOR = [0.4, 0.9, 0.4, 1]
 GRAPH_TCP_COLOR = [1, 0.7, 0.2, 1]
+
+
+@dataclass(frozen=True)
+class SeriesSpec:
+    """Описание серии для столбчатого графика."""
+
+    attr_name: str
+    color: list[float]
+    transform: Callable[[object], int]
 
 
 class NetDiagApp(App):
@@ -86,23 +97,23 @@ class NetDiagApp(App):
         graph.xmin, graph.xmax = -GROUP_X_MARGIN, point_count - 1 + GROUP_X_MARGIN
         graph.ymin = 0
         series = [
-            ("ping_avg_ms", GRAPH_PING_COLOR, lambda value: value),
-            ("dns_ok", GRAPH_DNS_COLOR, lambda value: 1 if value else 0),
-            ("tcp_ok", GRAPH_TCP_COLOR, lambda value: 1 if value else 0),
+            SeriesSpec("ping_avg_ms", GRAPH_PING_COLOR, lambda value: value),
+            SeriesSpec("dns_ok", GRAPH_DNS_COLOR, lambda value: 1 if value else 0),
+            SeriesSpec("tcp_ok", GRAPH_TCP_COLOR, lambda value: 1 if value else 0),
         ]
         offsets = [
             (index - (len(series) - 1) / 2) * BAR_SPACING
             for index in range(len(series))
         ]
         all_values: list[int] = []
-        for (attr_name, color, transform), offset in zip(series, offsets, strict=True):
-            plot = BarPlot(color=color, bar_width=BAR_WIDTH)
+        for spec, offset in zip(series, offsets, strict=True):
+            plot = BarPlot(color=spec.color, bar_width=BAR_WIDTH)
             points = []
             for index, target in enumerate(targets):
-                raw_value = getattr(target, attr_name)
+                raw_value = getattr(target, spec.attr_name)
                 if raw_value is None:
                     continue
-                value = transform(raw_value)
+                value = spec.transform(raw_value)
                 points.append((index + offset, value))
                 all_values.append(value)
             if points:
@@ -121,25 +132,20 @@ class NetDiagApp(App):
 
         legend_label = self.root.ids.get("ping_legend") if self.root else None
         if legend_label is not None:
+            def format_status(value):
+                if value is True:
+                    return "OK"
+                if value is False:
+                    return "FAIL"
+                return "н/д"
+
             legend_lines = ["Пояснение: DNS/TCP — 1 = OK, 0 = FAIL (значение столбца)"]
             for target in targets:
                 ping_text = (
                     f"{target.ping_avg_ms} ms" if target.ping_avg_ms is not None else "н/д"
                 )
-                dns_text = (
-                    "OK"
-                    if target.dns_ok is True
-                    else "FAIL"
-                    if target.dns_ok is False
-                    else "н/д"
-                )
-                tcp_text = (
-                    "OK"
-                    if target.tcp_ok is True
-                    else "FAIL"
-                    if target.tcp_ok is False
-                    else "н/д"
-                )
+                dns_text = format_status(target.dns_ok)
+                tcp_text = format_status(target.tcp_ok)
                 legend_lines.append(
                     f"{target.name}: ping={ping_text}, dns={dns_text}, tcp={tcp_text}"
                 )
