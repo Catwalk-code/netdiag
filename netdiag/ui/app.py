@@ -1,5 +1,6 @@
 from kivy.app import App
 from kivy.lang import Builder
+from kivy_garden.graph import MeshLinePlot
 from pathlib import Path
 
 from netdiag.ui.plot_data import parse_ping_avg_ms
@@ -62,12 +63,12 @@ class NetDiagApp(App):
             graph.ymin, graph.ymax = 0, 100
             return
 
-        graph.xmin = 0
-        graph.xmax = max(1, point_count - 1)
+        if point_count == 1:
+            graph.xmin, graph.xmax = -0.5, 0.5
+        else:
+            graph.xmin, graph.xmax = 0, point_count - 1
         graph.ymin = 0
         graph.ymax = max(100, max(values) + 10)
-
-        from kivy_garden.graph import MeshLinePlot
 
         plot = MeshLinePlot(color=[0.3, 0.8, 1, 1])
         plot.points = [(index, value) for index, value in enumerate(values)]
