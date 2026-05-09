@@ -25,7 +25,7 @@ class SeriesSpec:
 
     attr_name: str
     color: list[float]
-    transform: Callable[[object], int]
+    transform: Callable[[object], int | None]
 
 
 class NetDiagApp(App):
@@ -97,9 +97,19 @@ class NetDiagApp(App):
         graph.xmin, graph.xmax = -GROUP_X_MARGIN, point_count - 1 + GROUP_X_MARGIN
         graph.ymin = 0
         series = [
-            SeriesSpec("ping_avg_ms", GRAPH_PING_COLOR, lambda value: value),
-            SeriesSpec("dns_ok", GRAPH_DNS_COLOR, lambda value: 1 if value else 0),
-            SeriesSpec("tcp_ok", GRAPH_TCP_COLOR, lambda value: 1 if value else 0),
+            SeriesSpec(
+                "ping_avg_ms", GRAPH_PING_COLOR, lambda value: value if value is not None else None
+            ),
+            SeriesSpec(
+                "dns_ok",
+                GRAPH_DNS_COLOR,
+                lambda value: 1 if value is True else 0 if value is False else None,
+            ),
+            SeriesSpec(
+                "tcp_ok",
+                GRAPH_TCP_COLOR,
+                lambda value: 1 if value is True else 0 if value is False else None,
+            ),
         ]
         offsets = [
             (index - (len(series) - 1) / 2) * BAR_SPACING
@@ -111,9 +121,9 @@ class NetDiagApp(App):
             points = []
             for index, target in enumerate(targets):
                 raw_value = getattr(target, spec.attr_name)
-                if raw_value is None:
-                    continue
                 value = spec.transform(raw_value)
+                if value is None:
+                    continue
                 points.append((index + offset, value))
                 all_values.append(value)
             if points:
