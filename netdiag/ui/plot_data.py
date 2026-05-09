@@ -4,10 +4,7 @@ from dataclasses import dataclass
 import re
 
 _PING_AVG_PATTERN = re.compile(r"^ping:\s*ok,\s*avg=(\d+)\s*ms\s*$")
-_DNS_OK_PATTERN = re.compile(r"^dns:\s*ok\b")
-_DNS_FAIL_PATTERN = re.compile(r"^dns:\s*(fail|error)\b")
-_TCP_OK_PATTERN = re.compile(r"^tcp:\s*ok\b")
-_TCP_FAIL_PATTERN = re.compile(r"^tcp:\s*(fail|error)\b")
+_STATUS_PATTERN = re.compile(r"^(dns|tcp):\s*(ok|fail|error)\b")
 _TARGET_HEADER_PATTERN = re.compile(r"^\[(.+)\]$")
 
 
@@ -49,18 +46,14 @@ def parse_target_checks(report_text):
             current_target.ping_avg_ms = int(ping_match.group(1))
             continue
 
-        if _DNS_OK_PATTERN.match(line_lower):
-            current_target.dns_ok = True
-            continue
-        if _DNS_FAIL_PATTERN.match(line_lower):
-            current_target.dns_ok = False
-            continue
-
-        if _TCP_OK_PATTERN.match(line_lower):
-            current_target.tcp_ok = True
-            continue
-        if _TCP_FAIL_PATTERN.match(line_lower):
-            current_target.tcp_ok = False
+        status_match = _STATUS_PATTERN.match(line_lower)
+        if status_match:
+            check_name = status_match.group(1)
+            status_ok = status_match.group(2) == "ok"
+            if check_name == "dns":
+                current_target.dns_ok = status_ok
+            else:
+                current_target.tcp_ok = status_ok
             continue
 
     if current_target is not None:

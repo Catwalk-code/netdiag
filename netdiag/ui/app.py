@@ -86,23 +86,23 @@ class NetDiagApp(App):
         graph.xmin, graph.xmax = -GROUP_X_MARGIN, point_count - 1 + GROUP_X_MARGIN
         graph.ymin = 0
         series = [
-            ("ping_avg_ms", GRAPH_PING_COLOR, "Ping"),
-            ("dns_ok", GRAPH_DNS_COLOR, "DNS"),
-            ("tcp_ok", GRAPH_TCP_COLOR, "TCP"),
+            ("ping_avg_ms", GRAPH_PING_COLOR, "Ping", lambda value: value),
+            ("dns_ok", GRAPH_DNS_COLOR, "DNS", lambda value: int(value)),
+            ("tcp_ok", GRAPH_TCP_COLOR, "TCP", lambda value: int(value)),
         ]
         offsets = [
             (index - (len(series) - 1) / 2) * BAR_SPACING
             for index in range(len(series))
         ]
         all_values: list[int] = []
-        for (attr_name, color, _), offset in zip(series, offsets, strict=True):
+        for (attr_name, color, _, transform), offset in zip(series, offsets, strict=True):
             plot = BarPlot(color=color, bar_width=BAR_WIDTH)
             points = []
             for index, target in enumerate(targets):
                 raw_value = getattr(target, attr_name)
                 if raw_value is None:
                     continue
-                value = raw_value if attr_name == "ping_avg_ms" else int(raw_value)
+                value = transform(raw_value)
                 points.append((index + offset, value))
                 all_values.append(value)
             if points:
@@ -121,7 +121,7 @@ class NetDiagApp(App):
 
         legend_label = self.root.ids.get("ping_legend") if self.root else None
         if legend_label is not None:
-            legend_lines = ["Ping — мс, DNS/TCP: 1 = OK, 0 = FAIL"]
+            legend_lines = ["Пояснение: DNS/TCP — 1 = OK, 0 = FAIL (значение столбца)"]
             for target in targets:
                 ping_text = (
                     f"{target.ping_avg_ms} ms" if target.ping_avg_ms is not None else "н/д"
