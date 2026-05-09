@@ -98,7 +98,7 @@ class NetDiagApp(App):
         legend_label = self.root.ids.get("ping_legend") if self.root else None
         if legend_label is not None:
             legend_label.text = "\n".join(
-                f"Цель {target_name}: {value} ms" for target_name, value in bars
+                f"{target_name}: {value} ms" for target_name, value in bars
             )
 
     def save_report(self):
