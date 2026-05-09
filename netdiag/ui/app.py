@@ -87,8 +87,6 @@ class NetDiagApp(App):
         graph.ymin = 0
         graph.ymax = max(MIN_GRAPH_Y_MAX, max(values) + GRAPH_Y_TOP_MARGIN)
 
-        graph.x_ticks_major = 1
-        graph.x_ticks_minor = 0
         plot = BarPlot(color=GRAPH_BAR_COLOR, bar_width=0.6)
         plot.points = [(index, value) for index, value in enumerate(values)]
         graph.add_plot(plot)
