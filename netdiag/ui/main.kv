@@ -1,35 +1,40 @@
 #:import dp kivy.metrics.dp
+#:import Graph kivy_garden.graph.Graph
+#:import MeshLinePlot kivy_garden.graph.MeshLinePlot
 
 BoxLayout:
     orientation: "vertical"
     padding: 10
     spacing: 10
 
-    BoxLayout:
+    Button:
+        text: "Запустить диагностику"
         size_hint_y: None
         height: "48dp"
-        spacing: 10
+        on_release: app.run_diagnostics()
 
-        Button:
-            text: "Запустить диагностику"
-            on_release: app.run_diagnostics()
-
-        Button:
-            text: "Сохранить отчёт"
-            on_release: app.save_report()
+    Graph:
+        id: ping_graph
+        size_hint_y: None
+        height: "200dp"
+        xlabel: "Host index"
+        ylabel: "Ping (ms)"
+        x_grid: True
+        y_grid: True
+        x_ticks_major: 1
+        y_ticks_major: 50
 
     ScrollView:
         do_scroll_x: False
         do_scroll_y: True
         bar_width: "10dp"
-        scroll_wheel_distance: dp(60)
 
         Label:
             id: output_box
             text: "Нажмите кнопку для запуска..."
             text_size: self.width, None
             size_hint_y: None
-            height: max(self.texture_size[1], self.parent.height)
-            valign: "top"
+            height: self.texture_size[1]
             halign: "left"
+            valign: "top"
             padding: "6dp", "6dp"
