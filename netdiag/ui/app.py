@@ -19,6 +19,7 @@ class NetDiagApp(App):
     def run_diagnostics(self):
         """Запускает диагностику и выводит результат в интерфейс."""
         try:
+            self.clear_plots()
             from netdiag.checks.orchestrator import run_all_checks
 
             result = run_all_checks("targets.json")
@@ -26,6 +27,24 @@ class NetDiagApp(App):
             self.root.ids.output_box.text = result or "Диагностика завершена, но данных нет."
         except Exception as e:
             self.root.ids.output_box.text = f"Ошибка: {e}"
+
+    def clear_plots(self):
+        """Безопасно очищает график, если он присутствует в интерфейсе."""
+        if not self.root:
+            return
+
+        graph = self.root.ids.get("graph")
+        if graph is None:
+            graph = self.root.ids.get("ping_graph")
+        if graph is None:
+            return
+
+        plots = getattr(graph, "plots", None)
+        if not plots:
+            return
+
+        for plot in list(plots):
+            graph.remove_plot(plot)
 
     def save_report(self):
         """Сохраняет последний отчёт в TXT и показывает путь к файлу."""
