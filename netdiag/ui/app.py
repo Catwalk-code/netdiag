@@ -3,14 +3,18 @@ from kivy.lang import Builder
 from kivy_garden.graph import BarPlot
 from pathlib import Path
 
-from netdiag.ui.plot_data import parse_ping_bars
+from netdiag.ui.plot_data import parse_target_checks
 
 EMPTY_GRAPH_X_RANGE = (0, 1)
 EMPTY_GRAPH_Y_RANGE = (0, 100)
-SINGLE_POINT_X_MARGIN = 0.5
-MIN_GRAPH_Y_MAX = 100
+GROUP_X_MARGIN = 0.5
+MIN_GRAPH_Y_MAX = 10
 GRAPH_Y_TOP_MARGIN = 10
-GRAPH_BAR_COLOR = [0.3, 0.8, 1, 1]
+BAR_WIDTH = 0.18
+BAR_SPACING = 0.25
+GRAPH_PING_COLOR = [0.3, 0.8, 1, 1]
+GRAPH_DNS_COLOR = [0.4, 0.9, 0.4, 1]
+GRAPH_TCP_COLOR = [1, 0.7, 0.2, 1]
 
 
 class NetDiagApp(App):
@@ -71,25 +75,45 @@ class NetDiagApp(App):
         if graph is None:
             return
 
-        bars = parse_ping_bars(report_text)
-        target_names = [target_name for target_name, _ in bars]
-        values = [value for _, value in bars]
-        point_count = len(values)
+        targets = parse_target_checks(report_text)
+        target_names = [target.name for target in targets]
+        point_count = len(targets)
         if point_count == 0:
             graph.xmin, graph.xmax = EMPTY_GRAPH_X_RANGE
             graph.ymin, graph.ymax = EMPTY_GRAPH_Y_RANGE
             return
 
-        if point_count == 1:
-            graph.xmin, graph.xmax = -SINGLE_POINT_X_MARGIN, SINGLE_POINT_X_MARGIN
-        else:
-            graph.xmin, graph.xmax = 0, point_count - 1
+        graph.xmin, graph.xmax = -GROUP_X_MARGIN, point_count - 1 + GROUP_X_MARGIN
         graph.ymin = 0
-        graph.ymax = max(MIN_GRAPH_Y_MAX, max(values) + GRAPH_Y_TOP_MARGIN)
+        series = [
+            ("ping_avg_ms", GRAPH_PING_COLOR, "Ping"),
+            ("dns_ok", GRAPH_DNS_COLOR, "DNS"),
+            ("tcp_ok", GRAPH_TCP_COLOR, "TCP"),
+        ]
+        offsets = [
+            (index - (len(series) - 1) / 2) * BAR_SPACING
+            for index in range(len(series))
+        ]
+        all_values: list[int] = []
+        for (attr_name, color, _), offset in zip(series, offsets, strict=True):
+            plot = BarPlot(color=color, bar_width=BAR_WIDTH)
+            points = []
+            for index, target in enumerate(targets):
+                raw_value = getattr(target, attr_name)
+                if raw_value is None:
+                    continue
+                value = raw_value if attr_name == "ping_avg_ms" else int(raw_value)
+                points.append((index + offset, value))
+                all_values.append(value)
+            if points:
+                plot.points = points
+                graph.add_plot(plot)
 
-        plot = BarPlot(color=GRAPH_BAR_COLOR, bar_width=0.6)
-        plot.points = [(index, value) for index, value in enumerate(values)]
-        graph.add_plot(plot)
+        if not all_values:
+            graph.xmin, graph.xmax = EMPTY_GRAPH_X_RANGE
+            graph.ymin, graph.ymax = EMPTY_GRAPH_Y_RANGE
+            return
+        graph.ymax = max(MIN_GRAPH_Y_MAX, max(all_values) + GRAPH_Y_TOP_MARGIN)
 
         axis_targets_label = self.root.ids.get("ping_axis_targets") if self.root else None
         if axis_targets_label is not None:
@@ -97,9 +121,29 @@ class NetDiagApp(App):
 
         legend_label = self.root.ids.get("ping_legend") if self.root else None
         if legend_label is not None:
-            legend_label.text = "\n".join(
-                f"{target_name}: {value} ms" for target_name, value in bars
-            )
+            legend_lines = ["Ping — мс, DNS/TCP: 1 = OK, 0 = FAIL"]
+            for target in targets:
+                ping_text = (
+                    f"{target.ping_avg_ms} ms" if target.ping_avg_ms is not None else "н/д"
+                )
+                dns_text = (
+                    "OK"
+                    if target.dns_ok is True
+                    else "FAIL"
+                    if target.dns_ok is False
+                    else "н/д"
+                )
+                tcp_text = (
+                    "OK"
+                    if target.tcp_ok is True
+                    else "FAIL"
+                    if target.tcp_ok is False
+                    else "н/д"
+                )
+                legend_lines.append(
+                    f"{target.name}: ping={ping_text}, dns={dns_text}, tcp={tcp_text}"
+                )
+            legend_label.text = "\n".join(legend_lines)
 
     def save_report(self):
         """Сохраняет последний отчёт в TXT и показывает путь к файлу."""
