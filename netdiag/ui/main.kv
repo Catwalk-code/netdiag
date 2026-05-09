@@ -1,7 +1,5 @@
 #:import dp kivy.metrics.dp
 #:import Graph kivy_garden.graph.Graph
-#:import MeshLinePlot kivy_garden.graph.MeshLinePlot
-
 BoxLayout:
     orientation: "vertical"
     padding: 10
@@ -17,12 +15,32 @@ BoxLayout:
         id: ping_graph
         size_hint_y: None
         height: "200dp"
-        xlabel: "Host index"
-        ylabel: "Ping (ms)"
+        xlabel: "Цели"
+        ylabel: "Средний ping (мс)"
         x_grid: True
         y_grid: True
+        x_grid_label: True
+        y_grid_label: True
         x_ticks_major: 1
         y_ticks_major: 50
+
+    Label:
+        id: ping_axis_targets
+        size_hint_y: None
+        height: self.texture_size[1]
+        text: ""
+        halign: "center"
+        valign: "middle"
+        text_size: self.width, None
+
+    Label:
+        id: ping_legend
+        size_hint_y: None
+        height: self.texture_size[1]
+        text: ""
+        halign: "left"
+        valign: "top"
+        text_size: self.width, None
 
     ScrollView:
         do_scroll_x: False

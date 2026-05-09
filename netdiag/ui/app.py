@@ -1,16 +1,16 @@
 from kivy.app import App
 from kivy.lang import Builder
-from kivy_garden.graph import MeshLinePlot
+from kivy_garden.graph import BarPlot
 from pathlib import Path
 
-from netdiag.ui.plot_data import parse_ping_avg_ms
+from netdiag.ui.plot_data import parse_ping_bars
 
 EMPTY_GRAPH_X_RANGE = (0, 1)
 EMPTY_GRAPH_Y_RANGE = (0, 100)
 SINGLE_POINT_X_MARGIN = 0.5
 MIN_GRAPH_Y_MAX = 100
 GRAPH_Y_TOP_MARGIN = 10
-GRAPH_LINE_COLOR = [0.3, 0.8, 1, 1]
+GRAPH_BAR_COLOR = [0.3, 0.8, 1, 1]
 
 
 class NetDiagApp(App):
@@ -57,13 +57,23 @@ class NetDiagApp(App):
         for plot in list(plots):
             graph.remove_plot(plot)
 
+        if self.root:
+            axis_targets_label = self.root.ids.get("ping_axis_targets")
+            if axis_targets_label is not None:
+                axis_targets_label.text = ""
+            legend_label = self.root.ids.get("ping_legend")
+            if legend_label is not None:
+                legend_label.text = ""
+
     def update_ping_graph(self, report_text):
         """Обновляет график ping средними значениями по целям."""
         graph = self.root.ids.get("ping_graph") if self.root else None
         if graph is None:
             return
 
-        values = parse_ping_avg_ms(report_text)
+        bars = parse_ping_bars(report_text)
+        target_names = [target_name for target_name, _ in bars]
+        values = [value for _, value in bars]
         point_count = len(values)
         if point_count == 0:
             graph.xmin, graph.xmax = EMPTY_GRAPH_X_RANGE
@@ -77,9 +87,21 @@ class NetDiagApp(App):
         graph.ymin = 0
         graph.ymax = max(MIN_GRAPH_Y_MAX, max(values) + GRAPH_Y_TOP_MARGIN)
 
-        plot = MeshLinePlot(color=GRAPH_LINE_COLOR)
+        graph.x_ticks_major = 1
+        graph.x_ticks_minor = 0
+        plot = BarPlot(color=GRAPH_BAR_COLOR, bar_width=0.6)
         plot.points = [(index, value) for index, value in enumerate(values)]
         graph.add_plot(plot)
+
+        axis_targets_label = self.root.ids.get("ping_axis_targets") if self.root else None
+        if axis_targets_label is not None:
+            axis_targets_label.text = " | ".join(target_names)
+
+        legend_label = self.root.ids.get("ping_legend") if self.root else None
+        if legend_label is not None:
+            legend_label.text = "\n".join(
+                f"■ {target_name}: {value} ms" for target_name, value in bars
+            )
 
     def save_report(self):
         """Сохраняет последний отчёт в TXT и показывает путь к файлу."""
