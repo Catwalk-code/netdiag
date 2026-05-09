@@ -9,9 +9,9 @@ def parse_ping_avg_ms(report_text):
         return []
 
     values = []
-    pattern = re.compile(r"^ping:\s*OK,\s*avg=(\d+)\s*ms\s*$", re.IGNORECASE)
+    pattern = re.compile(r"^ping:\s*ok,\s*avg=(\d+)\s*ms\s*$")
     for line in report_text.splitlines():
-        match = pattern.match(line.strip())
+        match = pattern.match(line.strip().lower())
         if match:
             values.append(int(match.group(1)))
     return values

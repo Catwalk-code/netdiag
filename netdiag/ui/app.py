@@ -5,6 +5,12 @@ from pathlib import Path
 
 from netdiag.ui.plot_data import parse_ping_avg_ms
 
+EMPTY_GRAPH_X_RANGE = (0, 1)
+EMPTY_GRAPH_Y_RANGE = (0, 100)
+SINGLE_POINT_X_MARGIN = 0.5
+MIN_GRAPH_Y_MAX = 100
+GRAPH_Y_PADDING = 10
+
 
 class NetDiagApp(App):
     """Главное Kivy-приложение NetDiag."""
@@ -59,16 +65,16 @@ class NetDiagApp(App):
         values = parse_ping_avg_ms(report_text)
         point_count = len(values)
         if point_count == 0:
-            graph.xmin, graph.xmax = 0, 1
-            graph.ymin, graph.ymax = 0, 100
+            graph.xmin, graph.xmax = EMPTY_GRAPH_X_RANGE
+            graph.ymin, graph.ymax = EMPTY_GRAPH_Y_RANGE
             return
 
         if point_count == 1:
-            graph.xmin, graph.xmax = -0.5, 0.5
+            graph.xmin, graph.xmax = -SINGLE_POINT_X_MARGIN, SINGLE_POINT_X_MARGIN
         else:
             graph.xmin, graph.xmax = 0, point_count - 1
         graph.ymin = 0
-        graph.ymax = max(100, max(values) + 10)
+        graph.ymax = max(MIN_GRAPH_Y_MAX, max(values) + GRAPH_Y_PADDING)
 
         plot = MeshLinePlot(color=[0.3, 0.8, 1, 1])
         plot.points = [(index, value) for index, value in enumerate(values)]
