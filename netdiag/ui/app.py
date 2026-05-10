@@ -12,7 +12,7 @@ EMPTY_GRAPH_Y_RANGE = (0, 100)
 GROUP_X_MARGIN = 0.5
 MIN_GRAPH_Y_MAX = 10
 GRAPH_Y_TOP_MARGIN = 10
-BAR_WIDTH = 0.6
+BAR_SPACING = 0.6
 GRAPH_PING_COLOR = [0.3, 0.8, 1, 1]
 
 
@@ -97,7 +97,7 @@ class NetDiagApp(App):
         ]
         all_values: list[int] = []
         for spec in series:
-            plot = BarPlot(color=spec.color, bar_width=BAR_WIDTH)
+            plot = BarPlot(color=spec.color, bar_spacing=BAR_SPACING)
             points = []
             for index, target in enumerate(targets):
                 raw_value = getattr(target, spec.attr_name)
@@ -109,6 +109,7 @@ class NetDiagApp(App):
             if points:
                 plot.points = points
                 graph.add_plot(plot)
+                plot.bind_to_graph(graph)
 
         if not all_values:
             graph.xmin, graph.xmax = EMPTY_GRAPH_X_RANGE
