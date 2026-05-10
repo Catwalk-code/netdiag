@@ -1,6 +1,7 @@
 ```
 # Logs and temp files
 *.log
+reports/
 
 # Environment
 .env
@@ -61,4 +62,5 @@ wheels/
 .Trashes
 ehthumbs.db
 Thumbs.db
+NetDiag.spec
 ```
