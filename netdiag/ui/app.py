@@ -85,7 +85,6 @@ class NetDiagApp(App):
             return
 
         targets = parse_target_checks(report_text)
-        target_names = [target.name for target in targets]
         point_count = len(targets)
         if point_count == 0:
             graph.xmin, graph.xmax = EMPTY_GRAPH_X_RANGE
