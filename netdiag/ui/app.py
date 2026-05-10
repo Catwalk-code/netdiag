@@ -174,7 +174,7 @@ class NetDiagApp(App):
     @staticmethod
     def _nice_tick(raw_step):
         if raw_step <= 0:
-            return 1
+            return MIN_TICK_STEP
 
         magnitude = 10 ** math.floor(math.log10(raw_step))
         normalized = raw_step / magnitude
