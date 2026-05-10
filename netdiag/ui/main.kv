@@ -20,6 +20,10 @@ BoxLayout:
             on_release: app.stop_monitoring()
 
         Button:
+            text: "Перезагрузить цели"
+            on_release: app.reload_targets()
+
+        Button:
             text: "Сохранить отчёт"
             on_release: app.save_report()
 
