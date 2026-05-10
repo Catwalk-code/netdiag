@@ -255,5 +255,7 @@ class NetDiagApp(App):
     def _bar_spacing_for_count(count):
         if count <= 0:
             return MIN_BAR_SPACING
+        if count == 1:
+            return MAX_BAR_SPACING
         spacing = MAX_BAR_SPACING / count
         return max(MIN_BAR_SPACING, min(MAX_BAR_SPACING, spacing))
