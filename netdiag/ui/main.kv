@@ -23,10 +23,17 @@ BoxLayout:
             text: "Сохранить отчёт"
             on_release: app.save_report()
 
+    GridLayout:
+        id: target_indices
+        size_hint_y: None
+        height: dp(22)
+        cols: 1
+        spacing: dp(4)
+
     Graph:
         id: ping_graph
         size_hint_y: 0.58
-        xlabel: "Фиксированные слоты"
+        xlabel: "Цели"
         ylabel: "Ping (ms)"
         x_grid: True
         y_grid: True
