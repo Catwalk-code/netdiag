@@ -22,8 +22,9 @@ EMPTY_GRAPH_YMAX = 100.0
 MIN_Y_MARGIN = 5.0
 MIN_Y_RANGE = 5.0
 MIN_TICK_STEP = 0.1
-MIN_BAR_SPACING = 0.1
-MAX_BAR_SPACING = 0.85
+MIN_BAR_SPACING = 0.05
+MAX_BAR_SPACING = 0.6
+MAX_SPACING_TARGET_COUNT = 12
 LATENCY_GREEN_THRESHOLD = 50
 LATENCY_YELLOW_THRESHOLD = 150
 INACTIVE_BAR_COLOR = [0.4, 0.4, 0.4, 0.7]
@@ -179,7 +180,19 @@ class NetDiagApp(App):
             f"{timestamp} | {' | '.join(self._format_latency(value) for value in values)}"
             for timestamp, values in self._history
         ]
-        return "\n".join(header + rows)
+        report_lines = header + rows
+        diagnostics = self._build_diagnostics_section()
+        if diagnostics:
+            report_lines.append("")
+            report_lines.extend(diagnostics)
+        return "\n".join(report_lines)
+
+    def _build_diagnostics_section(self):
+        try:
+            diagnostics_text = run_all_checks(DEFAULT_CONFIG_PATH)
+        except Exception as exc:
+            return [f"Ошибка диагностики: {exc}"]
+        return diagnostics_text.splitlines()
 
     def _simulate_ping_ms(self):
         base = self._rng.randint(18, 60)
@@ -256,6 +269,7 @@ class NetDiagApp(App):
         if count <= 0:
             return MIN_BAR_SPACING
         if count == 1:
-            return MAX_BAR_SPACING
-        spacing = MAX_BAR_SPACING / count
+            return MIN_BAR_SPACING
+        normalized = min(1.0, (count - 1) / (MAX_SPACING_TARGET_COUNT - 1))
+        spacing = MIN_BAR_SPACING + (MAX_BAR_SPACING - MIN_BAR_SPACING) * normalized
         return max(MIN_BAR_SPACING, min(MAX_BAR_SPACING, spacing))
