@@ -12,12 +12,8 @@ EMPTY_GRAPH_Y_RANGE = (0, 100)
 GROUP_X_MARGIN = 0.5
 MIN_GRAPH_Y_MAX = 10
 GRAPH_Y_TOP_MARGIN = 10
-BAR_WIDTH = 0.18
-BAR_SPACING = 0.25
+BAR_WIDTH = 0.6
 GRAPH_PING_COLOR = [0.3, 0.8, 1, 1]
-GRAPH_DNS_COLOR = [0.4, 0.9, 0.4, 1]
-GRAPH_TCP_COLOR = [1, 0.7, 0.2, 1]
-STATUS_LABELS = {True: "OK", False: "FAIL", None: "н/д"}
 
 
 @dataclass(frozen=True)
@@ -88,36 +84,19 @@ class NetDiagApp(App):
             return
 
         targets = parse_target_checks(report_text)
-        target_names = [target.name for target in targets]
-        point_count = len(targets)
-        if point_count == 0:
+        num_targets = len(targets)
+        if num_targets == 0:
             graph.xmin, graph.xmax = EMPTY_GRAPH_X_RANGE
             graph.ymin, graph.ymax = EMPTY_GRAPH_Y_RANGE
             return
 
-        graph.xmin, graph.xmax = -GROUP_X_MARGIN, point_count - 1 + GROUP_X_MARGIN
+        graph.xmin, graph.xmax = -GROUP_X_MARGIN, num_targets - 1 + GROUP_X_MARGIN
         graph.ymin = 0
         series = [
-            SeriesSpec(
-                "ping_avg_ms", GRAPH_PING_COLOR, lambda value: value
-            ),
-            SeriesSpec(
-                "dns_ok",
-                GRAPH_DNS_COLOR,
-                lambda value: 1 if value is True else 0 if value is False else None,
-            ),
-            SeriesSpec(
-                "tcp_ok",
-                GRAPH_TCP_COLOR,
-                lambda value: 1 if value is True else 0 if value is False else None,
-            ),
-        ]
-        offsets = [
-            (index - (len(series) - 1) / 2) * BAR_SPACING
-            for index in range(len(series))
+            SeriesSpec("ping_avg_ms", GRAPH_PING_COLOR, lambda value: value),
         ]
         all_values: list[int] = []
-        for spec, offset in zip(series, offsets, strict=True):
+        for spec in series:
             plot = BarPlot(color=spec.color, bar_width=BAR_WIDTH)
             points = []
             for index, target in enumerate(targets):
@@ -125,7 +104,7 @@ class NetDiagApp(App):
                 value = spec.transform(raw_value)
                 if value is None:
                     continue
-                points.append((index + offset, value))
+                points.append((index, value))
                 all_values.append(value)
             if points:
                 plot.points = points
@@ -137,26 +116,20 @@ class NetDiagApp(App):
             return
         graph.ymax = max(MIN_GRAPH_Y_MAX, max(all_values) + GRAPH_Y_TOP_MARGIN)
 
+        ping_values = [
+            f"{target.ping_avg_ms} ms" if target.ping_avg_ms is not None else "н/д"
+            for target in targets
+        ]
         axis_targets_label = self.root.ids.get("ping_axis_targets") if self.root else None
         if axis_targets_label is not None:
-            axis_targets_label.text = " | ".join(target_names)
+            axis_targets_label.text = " | ".join(
+                f"{target.name} ({ping_value})"
+                for target, ping_value in zip(targets, ping_values, strict=True)
+            )
 
         legend_label = self.root.ids.get("ping_legend") if self.root else None
         if legend_label is not None:
-            legend_lines = [
-                "Пояснение: DNS/TCP — 1 = "
-                f"{STATUS_LABELS[True]}, 0 = {STATUS_LABELS[False]} (значение столбца)"
-            ]
-            for target in targets:
-                ping_text = (
-                    f"{target.ping_avg_ms} ms" if target.ping_avg_ms is not None else "н/д"
-                )
-                dns_text = STATUS_LABELS.get(target.dns_ok, "н/д")
-                tcp_text = STATUS_LABELS.get(target.tcp_ok, "н/д")
-                legend_lines.append(
-                    f"{target.name}: ping={ping_text}, dns={dns_text}, tcp={tcp_text}"
-                )
-            legend_label.text = "\n".join(legend_lines)
+            legend_label.text = "Пинг (мс): " + " | ".join(ping_values)
 
     def save_report(self):
         """Сохраняет последний отчёт в TXT и показывает путь к файлу."""
