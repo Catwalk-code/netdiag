@@ -84,13 +84,13 @@ class NetDiagApp(App):
             return
 
         targets = parse_target_checks(report_text)
-        point_count = len(targets)
-        if point_count == 0:
+        target_count = len(targets)
+        if target_count == 0:
             graph.xmin, graph.xmax = EMPTY_GRAPH_X_RANGE
             graph.ymin, graph.ymax = EMPTY_GRAPH_Y_RANGE
             return
 
-        graph.xmin, graph.xmax = -GROUP_X_MARGIN, point_count - 1 + GROUP_X_MARGIN
+        graph.xmin, graph.xmax = -GROUP_X_MARGIN, target_count - 1 + GROUP_X_MARGIN
         graph.ymin = 0
         series = [
             SeriesSpec("ping_avg_ms", GRAPH_PING_COLOR, lambda value: value),
