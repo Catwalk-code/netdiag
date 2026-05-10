@@ -4,6 +4,7 @@ from datetime import datetime
 import math
 from pathlib import Path
 from random import Random
+import sys
 
 from kivy.app import App
 from kivy.clock import Clock
@@ -16,6 +17,19 @@ from netdiag.config import load_config
 from netdiag.report import save_report
 
 DEFAULT_CONFIG_PATH = "targets.json"
+
+
+def _get_config_path():
+    """Возвращает путь к targets.json: рядом с exe или в рабочей директории."""
+    if getattr(sys, 'frozen', False):
+        # Запущен как скомпилированный exe
+        base_path = Path(sys.executable).parent
+    else:
+        # Запущен как скрипт
+        base_path = Path.cwd()
+    
+    config_path = base_path / DEFAULT_CONFIG_PATH
+    return str(config_path)
 PING_INTERVAL_SECONDS = 1.0
 EMPTY_GRAPH_YMIN = 0.0
 EMPTY_GRAPH_YMAX = 100.0
@@ -53,10 +67,11 @@ class NetDiagApp(App):
         return Builder.load_file(str(kv_path))
 
     def on_start(self):
+        config_path = _get_config_path()
         try:
-            self._load_targets()
+            self._load_targets(config_path)
         except Exception as exc:
-            self.root.ids.output_box.text = f"Ошибка загрузки {DEFAULT_CONFIG_PATH}: {exc}"
+            self.root.ids.output_box.text = f"Ошибка загрузки {config_path}: {exc}"
             self.root.ids.ping_legend.text = "Цели для диагностики не загружены."
             return
 
@@ -78,7 +93,8 @@ class NetDiagApp(App):
             return
 
         if not self._targets:
-            self.root.ids.output_box.text = "Цели диагностики не загружены. Проверьте targets.json."
+            config_path = _get_config_path()
+            self.root.ids.output_box.text = f"Цели диагностики не загружены. Проверьте {config_path}."
             return
 
         self._slot_values = [None] * self._target_count
@@ -92,8 +108,9 @@ class NetDiagApp(App):
             return
         self._monitor_event.cancel()
         self._monitor_event = None
+        config_path = _get_config_path()
         try:
-            report_text = run_all_checks(DEFAULT_CONFIG_PATH)
+            report_text = run_all_checks(config_path)
         except Exception as exc:
             self.root.ids.output_box.text = f"Мониторинг остановлен. Ошибка диагностики: {exc}"
             return
@@ -102,8 +119,9 @@ class NetDiagApp(App):
     def reload_targets(self):
         """Перезагружает цели и пересоздает график с новым количеством столбцов."""
         self.stop_monitoring()
+        config_path = _get_config_path()
         try:
-            self._load_targets()
+            self._load_targets(config_path)
         except Exception as exc:
             self.root.ids.output_box.text = f"Ошибка перезагрузки целей: {exc}"
             return
@@ -202,8 +220,9 @@ class NetDiagApp(App):
         return "\n".join(report_lines)
 
     def _build_diagnostics_section(self):
+        config_path = _get_config_path()
         try:
-            diagnostics_text = run_all_checks(DEFAULT_CONFIG_PATH)
+            diagnostics_text = run_all_checks(config_path)
         except Exception as exc:
             return [f"Ошибка диагностики: {exc}"]
         return diagnostics_text.splitlines()
@@ -241,8 +260,10 @@ class NetDiagApp(App):
             nice = 10
         return max(MIN_TICK_STEP, nice * magnitude)
 
-    def _load_targets(self):
-        config = load_config(DEFAULT_CONFIG_PATH)
+    def _load_targets(self, config_path=None):
+        if config_path is None:
+            config_path = _get_config_path()
+        config = load_config(config_path)
         self._targets = list(config.targets)
         self._target_names = [target.name for target in self._targets]
         self._target_count = len(self._targets)
