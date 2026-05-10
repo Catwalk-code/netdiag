@@ -7,6 +7,7 @@ import sys
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.lang import Builder
+from kivy.metrics import dp
 from kivy.uix.label import Label
 from kivy_garden.graph import BarPlot
 
@@ -281,6 +282,8 @@ class NetDiagApp(App):
         for index in range(1, self._target_count + 1):
             label = Label(text=str(index), halign="center", valign="middle")
             label.bind(size=label.setter("text_size"))
+            # Добавляем небольшой отступ для центрирования над столбцом
+            label.padding = (dp(2), dp(2))
             indices_layout.add_widget(label)
 
     def _build_target_summary(self):
