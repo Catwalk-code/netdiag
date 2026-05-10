@@ -13,7 +13,6 @@ GROUP_X_MARGIN = 0.5
 MIN_GRAPH_Y_MAX = 10
 GRAPH_Y_TOP_MARGIN = 10
 BAR_WIDTH = 0.6
-BAR_SPACING = 0.25
 GRAPH_PING_COLOR = [0.3, 0.8, 1, 1]
 
 
@@ -96,12 +95,8 @@ class NetDiagApp(App):
         series = [
             SeriesSpec("ping_avg_ms", GRAPH_PING_COLOR, lambda value: value),
         ]
-        offsets = [
-            (index - (len(series) - 1) / 2) * BAR_SPACING
-            for index in range(len(series))
-        ]
         all_values: list[int] = []
-        for spec, offset in zip(series, offsets, strict=True):
+        for spec in series:
             plot = BarPlot(color=spec.color, bar_width=BAR_WIDTH)
             points = []
             for index, target in enumerate(targets):
@@ -109,7 +104,7 @@ class NetDiagApp(App):
                 value = spec.transform(raw_value)
                 if value is None:
                     continue
-                points.append((index + offset, value))
+                points.append((index, value))
                 all_values.append(value)
             if points:
                 plot.points = points
