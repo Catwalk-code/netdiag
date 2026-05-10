@@ -19,6 +19,7 @@ EMPTY_GRAPH_YMIN = 0.0
 EMPTY_GRAPH_YMAX = 100.0
 MIN_Y_MARGIN = 5.0
 MIN_Y_RANGE = 5.0
+MIN_TICK_STEP = 0.1
 LATENCY_GREEN_THRESHOLD = 50
 LATENCY_YELLOW_THRESHOLD = 150
 INACTIVE_BAR_COLOR = [0.4, 0.4, 0.4, 0.7]
@@ -185,4 +186,4 @@ class NetDiagApp(App):
             nice = 5
         else:
             nice = 10
-        return max(0.1, nice * magnitude)
+        return max(MIN_TICK_STEP, nice * magnitude)
