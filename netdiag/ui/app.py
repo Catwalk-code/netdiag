@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import math
 from pathlib import Path
 from random import Random
 
@@ -16,6 +17,8 @@ PING_INTERVAL_SECONDS = 1.0
 BAR_SPACING = 0.4
 EMPTY_GRAPH_YMIN = 0.0
 EMPTY_GRAPH_YMAX = 100.0
+MIN_Y_MARGIN = 5.0
+MIN_Y_RANGE = 5.0
 LATENCY_GREEN_THRESHOLD = 50
 LATENCY_YELLOW_THRESHOLD = 150
 INACTIVE_BAR_COLOR = [0.4, 0.4, 0.4, 0.7]
@@ -105,10 +108,10 @@ class NetDiagApp(App):
 
         if values:
             y_min = float(min(values))
-            y_margin = max(5.0, max(values) * 0.2)
+            y_margin = max(MIN_Y_MARGIN, max(values) * 0.2)
             y_max = float(max(values) + y_margin)
             if y_max <= y_min:
-                y_max = y_min + 5.0
+                y_max = y_min + MIN_Y_RANGE
             graph.ymin = y_min
             graph.ymax = y_max
             graph.y_ticks_major = self._nice_tick((y_max - y_min) / 5)
@@ -172,7 +175,7 @@ class NetDiagApp(App):
         if raw_step <= 0:
             return 1
 
-        magnitude = 10 ** int(len(str(int(raw_step))) - 1)
+        magnitude = 10 ** math.floor(math.log10(raw_step))
         normalized = raw_step / magnitude
         if normalized <= 1:
             nice = 1
@@ -182,4 +185,4 @@ class NetDiagApp(App):
             nice = 5
         else:
             nice = 10
-        return max(1, int(nice * magnitude))
+        return max(0.1, nice * magnitude)
