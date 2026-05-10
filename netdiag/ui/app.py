@@ -1,147 +1,185 @@
-from collections.abc import Callable
-from dataclasses import dataclass
+from __future__ import annotations
+
+from datetime import datetime
+from pathlib import Path
+from random import Random
+
 from kivy.app import App
+from kivy.clock import Clock
 from kivy.lang import Builder
 from kivy_garden.graph import BarPlot
-from pathlib import Path
 
-from netdiag.ui.plot_data import parse_target_checks
+from netdiag.report import save_report
 
-EMPTY_GRAPH_X_RANGE = (0, 0.5)
-EMPTY_GRAPH_Y_RANGE = (0, 100)
-GROUP_X_MARGIN = 0.2
-MIN_GRAPH_Y_MAX = 10
-GRAPH_Y_TOP_MARGIN = 10
-BAR_SPACING = 0.3
-GRAPH_PING_COLOR = [0.3, 0.8, 1, 1]
-
-
-@dataclass(frozen=True)
-class SeriesSpec:
-    """Описание серии для столбчатого графика."""
-
-    attr_name: str
-    color: list[float]
-    transform: Callable[[object], int | None]
+SLOT_COUNT = 24
+PING_INTERVAL_SECONDS = 1.0
+BAR_SPACING = 0.4
+EMPTY_GRAPH_YMIN = 0.0
+EMPTY_GRAPH_YMAX = 100.0
+LATENCY_GREEN_THRESHOLD = 50
+LATENCY_YELLOW_THRESHOLD = 150
+INACTIVE_BAR_COLOR = [0.4, 0.4, 0.4, 0.7]
+GREEN_BAR_COLOR = [0.2, 0.8, 0.2, 1]
+YELLOW_BAR_COLOR = [0.95, 0.8, 0.2, 1]
+RED_BAR_COLOR = [0.9, 0.25, 0.25, 1]
 
 
 class NetDiagApp(App):
-    """Главное Kivy-приложение NetDiag."""
+    """Приложение мониторинга сетевой задержки в реальном времени."""
 
     def __init__(self, **kwargs):
-        """Инициализирует состояние приложения."""
         super().__init__(**kwargs)
-        self.last_report_text = ""
+        self._bar_plots: list[BarPlot] = []
+        self._slot_values: list[int | None] = [None] * SLOT_COUNT
+        self._history: list[tuple[str, int]] = []
+        self._next_slot = 0
+        self._monitor_event = None
+        self._rng = Random()
 
     def build(self):
-        """Загружает интерфейс из kv-файла."""
         kv_path = Path(__file__).parent / "main.kv"
         return Builder.load_file(str(kv_path))
 
+    def on_start(self):
+        self._initialize_graph()
+        self.root.ids.output_box.text = "Нажмите «Старт мониторинга», чтобы начать сбор ping каждые 1 сек."
+
+    def on_stop(self):
+        self.stop_monitoring()
+
     def run_diagnostics(self):
-        """Запускает диагностику и выводит результат в интерфейс."""
-        try:
-            self.clear_plots()
-            from netdiag.checks.orchestrator import run_all_checks
+        """Совместимость со старой кнопкой: запускает мониторинг."""
+        self.start_monitoring()
 
-            result = run_all_checks("targets.json")
-            self.last_report_text = result
-            self.root.ids.output_box.text = result or "Диагностика завершена, но данных нет."
-            self.update_ping_graph(result)
-        except Exception as e:
-            self.root.ids.output_box.text = f"Ошибка: {e}"
-
-    def clear_plots(self):
-        """Безопасно очищает график, если он присутствует в интерфейсе."""
-        if not self.root:
+    def start_monitoring(self):
+        if self._monitor_event is not None:
+            self.root.ids.output_box.text = "Мониторинг уже запущен."
             return
 
-        graph = self.root.ids.get("graph")
-        if graph is None:
-            graph = self.root.ids.get("ping_graph")
-        if graph is None:
-            return
+        self._slot_values = [None] * SLOT_COUNT
+        self._history.clear()
+        self._next_slot = 0
+        self._refresh_graph()
+        self._monitor_event = Clock.schedule_interval(self._collect_ping_sample, PING_INTERVAL_SECONDS)
+        self.root.ids.output_box.text = "Мониторинг запущен. Данные обновляются каждую секунду."
 
-        plots = getattr(graph, "plots", None)
-        if not plots:
+    def stop_monitoring(self):
+        if self._monitor_event is None:
             return
+        self._monitor_event.cancel()
+        self._monitor_event = None
+        self.root.ids.output_box.text = "Мониторинг остановлен."
 
-        for plot in list(plots):
+    def _initialize_graph(self):
+        graph = self.root.ids.ping_graph
+        graph.xmin = -0.5
+        graph.xmax = SLOT_COUNT - 0.5
+        graph.ymin = EMPTY_GRAPH_YMIN
+        graph.ymax = EMPTY_GRAPH_YMAX
+        graph.y_ticks_major = 10
+
+        for plot in list(graph.plots):
             graph.remove_plot(plot)
 
-        if self.root:
-            axis_targets_label = self.root.ids.get("ping_axis_targets")
-            if axis_targets_label is not None:
-                axis_targets_label.text = ""
-            legend_label = self.root.ids.get("ping_legend")
-            if legend_label is not None:
-                legend_label.text = ""
+        self._bar_plots = []
+        for x in range(SLOT_COUNT):
+            plot = BarPlot(color=INACTIVE_BAR_COLOR, bar_spacing=BAR_SPACING)
+            plot.points = [(x, 0)]
+            graph.add_plot(plot)
+            plot.bind_to_graph(graph)
+            self._bar_plots.append(plot)
 
-    def update_ping_graph(self, report_text):
-        """Обновляет график ping средними значениями по целям."""
-        graph = self.root.ids.get("ping_graph") if self.root else None
-        if graph is None:
-            return
+    def _collect_ping_sample(self, _dt):
+        latency_ms = self._simulate_ping_ms()
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        targets = parse_target_checks(report_text)
-        num_targets = len(targets)
-        if num_targets == 0:
-            graph.xmin, graph.xmax = EMPTY_GRAPH_X_RANGE
-            graph.ymin, graph.ymax = EMPTY_GRAPH_Y_RANGE
-            return
+        self._slot_values[self._next_slot] = latency_ms
+        self._next_slot = (self._next_slot + 1) % SLOT_COUNT
+        self._history.append((timestamp, latency_ms))
 
-        graph.xmin, graph.xmax = -GROUP_X_MARGIN, num_targets - 1 + GROUP_X_MARGIN
-        graph.ymin = 0
-        series = [
-            SeriesSpec("ping_avg_ms", GRAPH_PING_COLOR, lambda value: value),
-        ]
-        all_values: list[int] = []
-        for spec in series:
-            plot = BarPlot(color=spec.color, bar_spacing=BAR_SPACING)
-            points = []
-            for index, target in enumerate(targets):
-                raw_value = getattr(target, spec.attr_name)
-                value = spec.transform(raw_value)
-                if value is None:
-                    continue
-                points.append((index, value))
-                all_values.append(value)
-            if points:
-                plot.points = points
-                graph.add_plot(plot)
-                plot.bind_to_graph(graph)
+        self._refresh_graph()
 
-        if not all_values:
-            graph.xmin, graph.xmax = EMPTY_GRAPH_X_RANGE
-            graph.ymin, graph.ymax = EMPTY_GRAPH_Y_RANGE
-            return
-        graph.ymax = max(MIN_GRAPH_Y_MAX, max(all_values) + GRAPH_Y_TOP_MARGIN)
+    def _refresh_graph(self):
+        graph = self.root.ids.ping_graph
+        values = [value for value in self._slot_values if value is not None]
 
-        ping_values = [
-            f"{target.ping_avg_ms} ms" if target.ping_avg_ms is not None else "н/д"
-            for target in targets
-        ]
-        axis_targets_label = self.root.ids.get("ping_axis_targets") if self.root else None
-        if axis_targets_label is not None:
-            axis_targets_label.text = " | ".join(
-                f"{target.name} ({ping_value})"
-                for target, ping_value in zip(targets, ping_values, strict=True)
+        if values:
+            y_min = float(min(values))
+            y_margin = max(5.0, max(values) * 0.2)
+            y_max = float(max(values) + y_margin)
+            if y_max <= y_min:
+                y_max = y_min + 5.0
+            graph.ymin = y_min
+            graph.ymax = y_max
+            graph.y_ticks_major = self._nice_tick((y_max - y_min) / 5)
+        else:
+            graph.ymin = EMPTY_GRAPH_YMIN
+            graph.ymax = EMPTY_GRAPH_YMAX
+            graph.y_ticks_major = 10
+
+        baseline = graph.ymin
+        for index, plot in enumerate(self._bar_plots):
+            value = self._slot_values[index]
+            if value is None:
+                plot.points = [(index, baseline)]
+                plot.color = INACTIVE_BAR_COLOR
+                continue
+
+            plot.points = [(index, value)]
+            plot.color = self._latency_color(value)
+
+        if self._history:
+            last_timestamp, last_value = self._history[-1]
+            self.root.ids.ping_legend.text = (
+                f"Последний замер: {last_value} мс в {last_timestamp}. "
+                f"Всего замеров: {len(self._history)}"
             )
-
-        legend_label = self.root.ids.get("ping_legend") if self.root else None
-        if legend_label is not None:
-            legend_label.text = "Пинг (мс): " + " | ".join(ping_values)
+        else:
+            self.root.ids.ping_legend.text = "Ожидание данных ping..."
 
     def save_report(self):
-        """Сохраняет последний отчёт в TXT и показывает путь к файлу."""
-        if not self.last_report_text.strip():
-            self.root.ids.output_box.text = "Нет отчёта для сохранения. Сначала запустите диагностику."
+        if not self._history:
+            self.root.ids.output_box.text = "Нет данных для отчёта. Сначала запустите мониторинг."
             return
 
-        try:
-            from netdiag.report import save_report
+        report_text = self._build_session_report()
+        report_path = save_report(report_text)
+        self.root.ids.output_box.text = f"Отчёт сохранён: {report_path}"
 
-            report_path = save_report(self.last_report_text)
-            self.root.ids.output_box.text = f"{self.last_report_text}\n\nОтчёт сохранён: {report_path}"
-        except Exception as e:
-            self.root.ids.output_box.text = f"Ошибка сохранения отчёта: {e}"
+    def _build_session_report(self):
+        header = ["Сеанс мониторинга ping", "======================", ""]
+        rows = [f"{timestamp} | {latency} ms" for timestamp, latency in self._history]
+        return "\n".join(header + rows)
+
+    def _simulate_ping_ms(self):
+        base = self._rng.randint(18, 60)
+        if self._rng.random() < 0.15:
+            return base + self._rng.randint(60, 120)
+        if self._rng.random() < 0.05:
+            return base + self._rng.randint(160, 260)
+        return base
+
+    @staticmethod
+    def _latency_color(value):
+        if value < LATENCY_GREEN_THRESHOLD:
+            return GREEN_BAR_COLOR
+        if value <= LATENCY_YELLOW_THRESHOLD:
+            return YELLOW_BAR_COLOR
+        return RED_BAR_COLOR
+
+    @staticmethod
+    def _nice_tick(raw_step):
+        if raw_step <= 0:
+            return 1
+
+        magnitude = 10 ** int(len(str(int(raw_step))) - 1)
+        normalized = raw_step / magnitude
+        if normalized <= 1:
+            nice = 1
+        elif normalized <= 2:
+            nice = 2
+        elif normalized <= 5:
+            nice = 5
+        else:
+            nice = 10
+        return max(1, int(nice * magnitude))
