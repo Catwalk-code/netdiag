@@ -4,10 +4,10 @@ import socket
 
 
 def run_tcp_check(host, ports, timeout_ms=800):
-    """Проверяет список TCP-портов и возвращает открытые и закрытые."""
+    """Проверяет список TCP-портов и возвращает открытые и закрытые"""
     timeout_sec = timeout_ms / 1000.0
-    opened: list[int] = []
-    closed: list[int] = []
+    opened = []
+    closed = []
 
     for port in ports:
         try:

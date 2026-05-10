@@ -9,8 +9,8 @@ from netdiag.models import AppConfig
 
 
 def _format_validation_error(exc):
-    """Преобразует ошибки Pydantic в понятный для пользователя текст."""
-    lines: list[str] = []
+    """Преобразует ошибки Pydantic в понятный для пользователя текст"""
+    lines = []
     for err in exc.errors():
         location = " -> ".join(str(item) for item in err.get("loc", []))
         message = err.get("msg", "Неизвестная ошибка валидации.")
@@ -19,7 +19,7 @@ def _format_validation_error(exc):
 
 
 def load_config(path="targets.json"):
-    """Надёжно загружает targets.json и возвращает валидированный AppConfig."""
+    """Надёжно загружает targets.json и возвращает валидированный AppConfig"""
     config_path = Path(path)
 
     if not config_path.exists():

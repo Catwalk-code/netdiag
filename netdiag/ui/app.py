@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from datetime import datetime
 import math
 from pathlib import Path
@@ -20,7 +18,7 @@ DEFAULT_CONFIG_PATH = "targets.json"
 
 
 def _get_config_path():
-    """Возвращает путь к targets.json: рядом с exe или в рабочей директории."""
+    """Возвращает путь к targets.json: рядом с exe или в рабочей директории"""
     if getattr(sys, 'frozen', False):
         # Запущен как скомпилированный exe
         base_path = Path(sys.executable).parent
@@ -30,6 +28,8 @@ def _get_config_path():
     
     config_path = base_path / DEFAULT_CONFIG_PATH
     return str(config_path)
+
+
 PING_INTERVAL_SECONDS = 1.0
 EMPTY_GRAPH_YMIN = 0.0
 EMPTY_GRAPH_YMAX = 100.0
@@ -48,17 +48,17 @@ RED_BAR_COLOR = [0.9, 0.25, 0.25, 1]
 
 
 class NetDiagApp(App):
-    """Приложение мониторинга сетевой задержки в реальном времени."""
+    """Приложение мониторинга сетевой задержки в реальном времени"""
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._bar_plots: list[BarPlot] = []
-        self._slot_values: list[int | None] = []
-        self._history: list[tuple[str, list[int | None]]] = []
+        self._bar_plots = []
+        self._slot_values = []
+        self._history = []
         self._monitor_event = None
         self._rng = Random()
         self._targets = []
-        self._target_names: list[str] = []
+        self._target_names = []
         self._target_count = 0
         self._bar_spacing = MIN_BAR_SPACING
 
