@@ -52,7 +52,6 @@ def run_all_checks(config_path="targets.json"):
         try:
             dns_result = run_dns_check(
                 host=target.host,
-                dns_servers=config.defaults.dns_servers,
             )
             lines.append(_format_dns_line(dns_result))
         except Exception as e:
