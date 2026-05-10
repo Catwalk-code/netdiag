@@ -10,6 +10,7 @@
     { "name": "Router", "host": "192.168.1.1", "ports": [80] },
     { "name": "Google DNS", "host": "8.8.8.8", "ports": [53, 443] },
     { "name": "Cloudflare DNS", "host": "1.1.1.1", "ports": [53, 443] },
-    { "name": "GitHub", "host": "github.com", "ports": [80, 443] }
+    { "name": "GitHub", "host": "github.com", "ports": [80, 443] },
+    {"name": "Microsoft", "host":"www.microsoft.com", "ports": [80, 443] }
   ]
 }

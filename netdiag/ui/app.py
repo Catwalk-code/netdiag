@@ -7,12 +7,12 @@ from pathlib import Path
 
 from netdiag.ui.plot_data import parse_target_checks
 
-EMPTY_GRAPH_X_RANGE = (0, 1)
+EMPTY_GRAPH_X_RANGE = (0, 0.5)
 EMPTY_GRAPH_Y_RANGE = (0, 100)
-GROUP_X_MARGIN = 0.5
+GROUP_X_MARGIN = 0.2
 MIN_GRAPH_Y_MAX = 10
 GRAPH_Y_TOP_MARGIN = 10
-BAR_SPACING = 0.6
+BAR_SPACING = 0.3
 GRAPH_PING_COLOR = [0.3, 0.8, 1, 1]
 
 
