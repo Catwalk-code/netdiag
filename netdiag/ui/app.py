@@ -11,6 +11,7 @@ from kivy.lang import Builder
 from kivy.uix.label import Label
 from kivy_garden.graph import BarPlot
 
+from netdiag.checks.orchestrator import run_all_checks
 from netdiag.config import load_config
 from netdiag.report import save_report
 
@@ -90,7 +91,12 @@ class NetDiagApp(App):
             return
         self._monitor_event.cancel()
         self._monitor_event = None
-        self.root.ids.output_box.text = "Мониторинг остановлен."
+        try:
+            report_text = run_all_checks(DEFAULT_CONFIG_PATH)
+        except Exception as exc:
+            self.root.ids.output_box.text = f"Мониторинг остановлен. Ошибка диагностики: {exc}"
+            return
+        self.root.ids.output_box.text = report_text
 
     def _initialize_graph(self):
         graph = self.root.ids.ping_graph
@@ -247,7 +253,9 @@ class NetDiagApp(App):
 
     @staticmethod
     def _bar_spacing_for_count(count):
-        if count <= 1:
+        if count <= 0:
             return MIN_BAR_SPACING
-        spacing = 1 - (1 / count)
+        if count == 1:
+            return MAX_BAR_SPACING
+        spacing = MAX_BAR_SPACING / count
         return max(MIN_BAR_SPACING, min(MAX_BAR_SPACING, spacing))
