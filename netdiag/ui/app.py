@@ -8,18 +8,21 @@ from random import Random
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.lang import Builder
+from kivy.uix.label import Label
 from kivy_garden.graph import BarPlot
 
+from netdiag.config import load_config
 from netdiag.report import save_report
 
-SLOT_COUNT = 24
+DEFAULT_CONFIG_PATH = "targets.json"
 PING_INTERVAL_SECONDS = 1.0
-BAR_SPACING = 0.4
 EMPTY_GRAPH_YMIN = 0.0
 EMPTY_GRAPH_YMAX = 100.0
 MIN_Y_MARGIN = 5.0
 MIN_Y_RANGE = 5.0
 MIN_TICK_STEP = 0.1
+MIN_BAR_SPACING = 0.1
+MAX_BAR_SPACING = 0.85
 LATENCY_GREEN_THRESHOLD = 50
 LATENCY_YELLOW_THRESHOLD = 150
 INACTIVE_BAR_COLOR = [0.4, 0.4, 0.4, 0.7]
@@ -34,19 +37,31 @@ class NetDiagApp(App):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._bar_plots: list[BarPlot] = []
-        self._slot_values: list[int | None] = [None] * SLOT_COUNT
-        self._history: list[tuple[str, int]] = []
-        self._next_slot = 0
+        self._slot_values: list[int | None] = []
+        self._history: list[tuple[str, list[int | None]]] = []
         self._monitor_event = None
         self._rng = Random()
+        self._targets = []
+        self._target_names: list[str] = []
+        self._target_count = 0
+        self._bar_spacing = MIN_BAR_SPACING
 
     def build(self):
         kv_path = Path(__file__).parent / "main.kv"
         return Builder.load_file(str(kv_path))
 
     def on_start(self):
+        try:
+            self._load_targets()
+        except Exception as exc:
+            self.root.ids.output_box.text = f"Ошибка загрузки {DEFAULT_CONFIG_PATH}: {exc}"
+            self.root.ids.ping_legend.text = "Цели для диагностики не загружены."
+            return
+
         self._initialize_graph()
-        self.root.ids.output_box.text = "Нажмите «Старт мониторинга», чтобы начать сбор ping каждые 1 сек."
+        self._render_target_indices()
+        self._refresh_graph()
+        self.root.ids.output_box.text = "Нажмите «Старт мониторинга», чтобы начать сбор ping по целям."
 
     def on_stop(self):
         self.stop_monitoring()
@@ -60,9 +75,12 @@ class NetDiagApp(App):
             self.root.ids.output_box.text = "Мониторинг уже запущен."
             return
 
-        self._slot_values = [None] * SLOT_COUNT
+        if not self._targets:
+            self.root.ids.output_box.text = "Цели диагностики не загружены. Проверьте targets.json."
+            return
+
+        self._slot_values = [None] * self._target_count
         self._history.clear()
-        self._next_slot = 0
         self._refresh_graph()
         self._monitor_event = Clock.schedule_interval(self._collect_ping_sample, PING_INTERVAL_SECONDS)
         self.root.ids.output_box.text = "Мониторинг запущен. Данные обновляются каждую секунду."
@@ -77,29 +95,30 @@ class NetDiagApp(App):
     def _initialize_graph(self):
         graph = self.root.ids.ping_graph
         graph.xmin = -0.5
-        graph.xmax = SLOT_COUNT - 0.5
+        graph.xmax = max(self._target_count - 0.5, 0.5)
         graph.ymin = EMPTY_GRAPH_YMIN
         graph.ymax = EMPTY_GRAPH_YMAX
         graph.y_ticks_major = 10
+        graph.x_ticks_major = 1
 
         for plot in list(graph.plots):
             graph.remove_plot(plot)
 
         self._bar_plots = []
-        for x in range(SLOT_COUNT):
-            plot = BarPlot(color=INACTIVE_BAR_COLOR, bar_spacing=BAR_SPACING)
+        self._bar_spacing = self._bar_spacing_for_count(self._target_count)
+        for x in range(self._target_count):
+            plot = BarPlot(color=INACTIVE_BAR_COLOR, bar_spacing=self._bar_spacing)
             plot.points = [(x, 0)]
             graph.add_plot(plot)
             plot.bind_to_graph(graph)
             self._bar_plots.append(plot)
 
     def _collect_ping_sample(self, _dt):
-        latency_ms = self._simulate_ping_ms()
+        values = [self._simulate_ping_ms() for _ in self._targets]
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        self._slot_values[self._next_slot] = latency_ms
-        self._next_slot = (self._next_slot + 1) % SLOT_COUNT
-        self._history.append((timestamp, latency_ms))
+        self._slot_values = values
+        self._history.append((timestamp, list(values)))
 
         self._refresh_graph()
 
@@ -123,7 +142,7 @@ class NetDiagApp(App):
 
         baseline = graph.ymin
         for index, plot in enumerate(self._bar_plots):
-            value = self._slot_values[index]
+            value = self._slot_values[index] if index < len(self._slot_values) else None
             if value is None:
                 plot.points = [(index, baseline)]
                 plot.color = INACTIVE_BAR_COLOR
@@ -132,14 +151,7 @@ class NetDiagApp(App):
             plot.points = [(index, value)]
             plot.color = self._latency_color(value)
 
-        if self._history:
-            last_timestamp, last_value = self._history[-1]
-            self.root.ids.ping_legend.text = (
-                f"Последний замер: {last_value} мс в {last_timestamp}. "
-                f"Всего замеров: {len(self._history)}"
-            )
-        else:
-            self.root.ids.ping_legend.text = "Ожидание данных ping..."
+        self.root.ids.ping_legend.text = self._build_target_summary()
 
     def save_report(self):
         if not self._history:
@@ -152,7 +164,15 @@ class NetDiagApp(App):
 
     def _build_session_report(self):
         header = ["Сеанс мониторинга ping", "======================", ""]
-        rows = [f"{timestamp} | {latency} ms" for timestamp, latency in self._history]
+        if self._target_names:
+            targets_line = " | ".join(
+                f"{index}) {name}" for index, name in enumerate(self._target_names, start=1)
+            )
+            header.extend([f"Цели: {targets_line}", ""])
+        rows = [
+            f"{timestamp} | {' | '.join(self._format_latency(value) for value in values)}"
+            for timestamp, values in self._history
+        ]
         return "\n".join(header + rows)
 
     def _simulate_ping_ms(self):
@@ -187,3 +207,47 @@ class NetDiagApp(App):
         else:
             nice = 10
         return max(MIN_TICK_STEP, nice * magnitude)
+
+    def _load_targets(self):
+        config = load_config(DEFAULT_CONFIG_PATH)
+        self._targets = list(config.targets)
+        self._target_names = [target.name for target in self._targets]
+        self._target_count = len(self._targets)
+        self._slot_values = [None] * self._target_count
+        self._bar_spacing = self._bar_spacing_for_count(self._target_count)
+
+    def _render_target_indices(self):
+        indices_layout = self.root.ids.target_indices
+        indices_layout.clear_widgets()
+        if not self._target_names:
+            indices_layout.cols = 1
+            return
+
+        indices_layout.cols = self._target_count
+        for index in range(1, self._target_count + 1):
+            label = Label(text=str(index), halign="center", valign="middle")
+            label.bind(size=label.setter("text_size"))
+            indices_layout.add_widget(label)
+
+    def _build_target_summary(self):
+        if not self._target_names:
+            return "Цели для диагностики не загружены."
+
+        entries = []
+        for index, name in enumerate(self._target_names, start=1):
+            value = self._slot_values[index - 1] if index - 1 < len(self._slot_values) else None
+            entries.append(f"{index}) {name} ({self._format_latency(value)})")
+        return f"Пинг (мс): {' | '.join(entries)}"
+
+    @staticmethod
+    def _format_latency(value):
+        if value is None:
+            return "н/д"
+        return f"{value} мс"
+
+    @staticmethod
+    def _bar_spacing_for_count(count):
+        if count <= 1:
+            return MIN_BAR_SPACING
+        spacing = 1 - (1 / count)
+        return max(MIN_BAR_SPACING, min(MAX_BAR_SPACING, spacing))
