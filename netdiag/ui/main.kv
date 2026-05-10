@@ -1,58 +1,60 @@
 #:import dp kivy.metrics.dp
 #:import Graph kivy_garden.graph.Graph
+
 BoxLayout:
     orientation: "vertical"
-    padding: 10
-    spacing: 10
+    padding: dp(10)
+    spacing: dp(10)
 
-    Button:
-        text: "Запустить диагностику"
+    BoxLayout:
         size_hint_y: None
-        height: "48dp"
-        on_release: app.run_diagnostics()
+        height: dp(48)
+        spacing: dp(8)
+
+        Button:
+            text: "Старт мониторинга"
+            on_release: app.start_monitoring()
+
+        Button:
+            text: "Стоп"
+            on_release: app.stop_monitoring()
+
+        Button:
+            text: "Сохранить отчёт"
+            on_release: app.save_report()
 
     Graph:
         id: ping_graph
-        size_hint_y: None
-        height: "200dp"
-        xlabel: "Цели"
-        ylabel: "Пинг (мс)"
+        size_hint_y: 0.58
+        xlabel: "Фиксированные слоты"
+        ylabel: "Ping (ms)"
         x_grid: True
         y_grid: True
-        x_grid_label: True
+        x_grid_label: False
         y_grid_label: True
-        x_ticks_major: 1
+        x_ticks_major: 2
         y_ticks_major: 10
-
-    Label:
-        id: ping_axis_targets
-        size_hint_y: None
-        height: self.texture_size[1]
-        text: ""
-        halign: "center"
-        valign: "middle"
-        text_size: self.width, None
 
     Label:
         id: ping_legend
         size_hint_y: None
         height: self.texture_size[1]
-        text: ""
+        text: "Ожидание данных ping..."
         halign: "left"
-        valign: "top"
+        valign: "middle"
         text_size: self.width, None
 
     ScrollView:
         do_scroll_x: False
         do_scroll_y: True
-        bar_width: "10dp"
+        bar_width: dp(10)
 
         Label:
             id: output_box
-            text: "Нажмите кнопку для запуска..."
+            text: ""
             text_size: self.width, None
             size_hint_y: None
-            height: self.texture_size[1]
+            height: max(self.texture_size[1], dp(36))
             halign: "left"
             valign: "top"
-            padding: "6dp", "6dp"
+            padding: dp(6), dp(6)
