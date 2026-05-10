@@ -68,10 +68,6 @@ class NetDiagApp(App):
     def on_stop(self):
         self.stop_monitoring()
 
-    def run_diagnostics(self):
-        """Совместимость со старой кнопкой: запускает мониторинг."""
-        self.start_monitoring()
-
     def start_monitoring(self):
         if self._monitor_event is not None:
             self.root.ids.output_box.text = "Мониторинг уже запущен."
