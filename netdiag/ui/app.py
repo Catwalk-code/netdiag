@@ -95,6 +95,20 @@ class NetDiagApp(App):
             return
         self.root.ids.output_box.text = report_text
 
+    def reload_targets(self):
+        """Перезагружает цели и пересоздает график с новым количеством столбцов."""
+        self.stop_monitoring()
+        try:
+            self._load_targets()
+        except Exception as exc:
+            self.root.ids.output_box.text = f"Ошибка перезагрузки целей: {exc}"
+            return
+        
+        self._initialize_graph()
+        self._render_target_indices()
+        self._refresh_graph()
+        self.root.ids.output_box.text = f"Цели перезагружены. Найдено {self._target_count} целей."
+
     def _initialize_graph(self):
         graph = self.root.ids.ping_graph
         graph.xmin = -0.5
