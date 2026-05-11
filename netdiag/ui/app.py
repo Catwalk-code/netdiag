@@ -12,6 +12,7 @@ from kivy.uix.label import Label
 from kivy_garden.graph import BarPlot
 
 from netdiag.checks.orchestrator import run_all_checks
+from netdiag.checks.ping import run_ping_check
 from netdiag.config import load_config
 from netdiag.report import save_report
 
@@ -26,7 +27,7 @@ def _get_config_path():
     else:
         # Запущен как скрипт
         base_path = Path.cwd()
-    
+
     config_path = base_path / DEFAULT_CONFIG_PATH
     return str(config_path)
 
@@ -62,6 +63,7 @@ class NetDiagApp(App):
         self._target_names = []
         self._target_count = 0
         self._bar_spacing = MIN_BAR_SPACING
+        self._defaults = None
 
     def build(self):
         kv_path = Path(__file__).parent / "main.kv"
@@ -122,7 +124,7 @@ class NetDiagApp(App):
         except Exception as exc:
             self.root.ids.output_box.text = f"Ошибка перезагрузки целей: {exc}"
             return
-        
+
         self._initialize_graph()
         self._render_target_indices()
         self._refresh_graph()
@@ -150,7 +152,27 @@ class NetDiagApp(App):
             self._bar_plots.append(plot)
 
     def _collect_ping_sample(self, _dt):
-        values = [self._simulate_ping_ms() for _ in self._targets]
+        values = []
+        defaults = self._defaults
+        ping_count = defaults.ping_count if defaults else 4
+        ping_timeout_ms = defaults.ping_timeout_ms if defaults else 1000
+
+        for target in self._targets:
+            try:
+                result = run_ping_check(
+                    host=target.host,
+                    count=ping_count,
+                    timeout_ms=ping_timeout_ms,
+                )
+            except Exception:
+                values.append(None)
+                continue
+
+            if result.get("ok") and result.get("avg_ms") is not None:
+                values.append(result.get("avg_ms"))
+            else:
+                values.append(None)
+
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         self._slot_values = values
@@ -224,14 +246,6 @@ class NetDiagApp(App):
             return [f"Ошибка диагностики: {exc}"]
         return diagnostics_text.splitlines()
 
-    def _simulate_ping_ms(self):
-        base = self._rng.randint(18, 60)
-        if self._rng.random() < 0.15:
-            return base + self._rng.randint(60, 120)
-        if self._rng.random() < 0.05:
-            return base + self._rng.randint(160, 260)
-        return base
-
     @staticmethod
     def _latency_color(value):
         if value < LATENCY_GREEN_THRESHOLD:
@@ -266,6 +280,7 @@ class NetDiagApp(App):
         self._target_count = len(self._targets)
         self._slot_values = [None] * self._target_count
         self._bar_spacing = self._bar_spacing_for_count(self._target_count)
+        self._defaults = config.defaults
 
     def _render_target_indices(self):
         indices_layout = self.root.ids.target_indices
