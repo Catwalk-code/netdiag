@@ -1,7 +1,6 @@
 from datetime import datetime
 import math
 from pathlib import Path
-from random import Random
 import sys
 import threading
 import time
@@ -35,8 +34,8 @@ def _get_config_path():
     return str(config_path)
 
 
-PING_INTERVAL_SECONDS = 1.0
-UI_REFRESH_SECONDS = 0.2
+PING_INTERVAL_SECONDS = 3.0
+UI_REFRESH_SECONDS = 5.5
 EMPTY_GRAPH_YMIN = 0.0
 EMPTY_GRAPH_YMAX = 100.0
 MIN_Y_MARGIN = 5.0
@@ -62,7 +61,6 @@ class NetDiagApp(App):
         self._slot_values = []
         self._history = []
         self._monitor_event = None
-        self._rng = Random()
         self._targets = []
         self._target_names = []
         self._target_count = 0
@@ -108,7 +106,7 @@ class NetDiagApp(App):
         self._refresh_graph()
         self._start_ping_thread()
         self._monitor_event = Clock.schedule_interval(self._apply_latest_sample, UI_REFRESH_SECONDS)
-        self.root.ids.output_box.text = "Мониторинг запущен. Данные обновляются каждую секунду."
+        self.root.ids.output_box.text = "Мониторинг запущен. Данные обновляются каждые несколько секунд."
 
     def stop_monitoring(self):
         if self._monitor_event is None:
