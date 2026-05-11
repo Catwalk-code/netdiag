@@ -3,6 +3,9 @@ import math
 from pathlib import Path
 from random import Random
 import sys
+import threading
+import time
+from queue import Queue, Empty
 
 from kivy.app import App
 from kivy.clock import Clock
@@ -33,6 +36,7 @@ def _get_config_path():
 
 
 PING_INTERVAL_SECONDS = 1.0
+UI_REFRESH_SECONDS = 0.2
 EMPTY_GRAPH_YMIN = 0.0
 EMPTY_GRAPH_YMAX = 100.0
 MIN_Y_MARGIN = 5.0
@@ -64,6 +68,9 @@ class NetDiagApp(App):
         self._target_count = 0
         self._bar_spacing = MIN_BAR_SPACING
         self._defaults = None
+        self._ping_thread = None
+        self._ping_stop_event = threading.Event()
+        self._result_queue = Queue()
 
     def build(self):
         kv_path = Path(__file__).parent / "main.kv"
@@ -99,7 +106,8 @@ class NetDiagApp(App):
         self._slot_values = [None] * self._target_count
         self._history.clear()
         self._refresh_graph()
-        self._monitor_event = Clock.schedule_interval(self._collect_ping_sample, PING_INTERVAL_SECONDS)
+        self._start_ping_thread()
+        self._monitor_event = Clock.schedule_interval(self._apply_latest_sample, UI_REFRESH_SECONDS)
         self.root.ids.output_box.text = "Мониторинг запущен. Данные обновляются каждую секунду."
 
     def stop_monitoring(self):
@@ -107,6 +115,7 @@ class NetDiagApp(App):
             return
         self._monitor_event.cancel()
         self._monitor_event = None
+        self._stop_ping_thread()
         config_path = _get_config_path()
         try:
             report_text = run_all_checks(config_path)
@@ -151,33 +160,64 @@ class NetDiagApp(App):
             plot.bind_to_graph(graph)
             self._bar_plots.append(plot)
 
-    def _collect_ping_sample(self, _dt):
-        values = []
+    def _start_ping_thread(self):
+        self._ping_stop_event.clear()
+        self._ping_thread = threading.Thread(target=self._ping_worker, daemon=True)
+        self._ping_thread.start()
+
+    def _stop_ping_thread(self):
+        self._ping_stop_event.set()
+        if self._ping_thread is not None:
+            self._ping_thread.join(timeout=1.0)
+        self._ping_thread = None
+        self._result_queue = Queue()
+
+    def _ping_worker(self):
         defaults = self._defaults
         ping_count = defaults.ping_count if defaults else 4
         ping_timeout_ms = defaults.ping_timeout_ms if defaults else 1000
 
-        for target in self._targets:
-            try:
-                result = run_ping_check(
-                    host=target.host,
-                    count=ping_count,
-                    timeout_ms=ping_timeout_ms,
-                )
-            except Exception:
-                values.append(None)
-                continue
+        while not self._ping_stop_event.is_set():
+            start_time = time.monotonic()
+            values = []
+            for target in self._targets:
+                try:
+                    result = run_ping_check(
+                        host=target.host,
+                        count=ping_count,
+                        timeout_ms=ping_timeout_ms,
+                    )
+                except Exception:
+                    values.append(None)
+                    continue
 
-            if result.get("ok") and result.get("avg_ms") is not None:
-                values.append(result.get("avg_ms"))
-            else:
-                values.append(None)
+                if result.get("ok") and result.get("avg_ms") is not None:
+                    values.append(result.get("avg_ms"))
+                else:
+                    values.append(None)
 
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            self._result_queue.put((timestamp, values))
 
+            elapsed = time.monotonic() - start_time
+            sleep_time = max(0.0, PING_INTERVAL_SECONDS - elapsed)
+            if sleep_time > 0:
+                self._ping_stop_event.wait(timeout=sleep_time)
+
+    def _apply_latest_sample(self, _dt):
+        latest_sample = None
+        try:
+            while True:
+                latest_sample = self._result_queue.get_nowait()
+        except Empty:
+            pass
+
+        if latest_sample is None:
+            return
+
+        timestamp, values = latest_sample
         self._slot_values = values
         self._history.append((timestamp, list(values)))
-
         self._refresh_graph()
 
     def _refresh_graph(self):
