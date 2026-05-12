@@ -12,6 +12,6 @@
     { "name": "Cloudflare DNS", "host": "1.1.1.1", "ports": [53, 443] },
     { "name": "GitHub", "host": "github.com", "ports": [80, 443] },
     {"name": "Microsoft", "host":"www.microsoft.com", "ports": [80, 443] },
-    {"name": "No such addresses", "host":"www.asdfasdf.edu", "ports":[80,443]}
+    {"name": "Example Unknown Address", "host":"www.asdfasdf.edu", "ports":[80,443]}
   ]
 }
